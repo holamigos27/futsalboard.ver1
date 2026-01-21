@@ -2,23 +2,23 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Futsal Board - Data Storage Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Futsal Board - Touch & Data Edition</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #2c3e50; margin: 0; padding: 10px; }
-        .controls { background: white; padding: 12px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 1300px; }
-        .canvas-container { position: relative; background: #fff; border: 2px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #2c3e50; margin: 0; padding: 10px; overflow-x: hidden; }
+        .controls { background: white; padding: 12px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 100%; }
+        .canvas-container { position: relative; background: #fff; border: 2px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); touch-action: none; }
         canvas { display: block; touch-action: none; cursor: crosshair; }
-        button { padding: 6px 10px; font-weight: bold; border-radius: 5px; border: 1px solid #ccc; cursor: pointer; background: white; font-size: 13px; color: #333; }
+        button { padding: 6px 10px; font-weight: bold; border-radius: 5px; border: 1px solid #ccc; cursor: pointer; background: white; font-size: 13px; color: #333; -webkit-tap-highlight-color: transparent; }
         button:hover { background: #f8f9fa; }
+        button:active { background: #e0e0e0; }
         .active { background: #000 !important; color: #fff !important; }
         .label { font-size: 11px; color: #666; display: block; text-align: center; margin-bottom: 4px; }
         .group { border-right: 1px solid #eee; padding: 0 10px; display: flex; flex-direction: column; justify-content: flex-start; }
         .btn-delete { color: #e74c3c; border-color: #e74c3c; }
         .btn-save { background: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; }
-        /* データ管理用スタイル */
         .btn-data { background: #3498db !important; color: white !important; border-color: #2980b9 !important; }
         #saveList { padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; max-width: 120px; }
-
         .color-picker { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; align-items: center; }
         .color-row { display: flex; gap: 4px; }
         .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ddd; cursor: pointer; }
@@ -165,7 +165,119 @@
     let currentTerminal = 'arrow', currentOpacity = 0.5, isFill = false, isStroke = true;
     let isPortrait = false, showZones = false, laneMode = 0, tempShape = null;
 
-    // --- データ保存・読込機能 ---
+    // --- 座標計算関数 (マウスとタッチの共通化) ---
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        // 表示サイズとキャンバス解像度の比率を考慮
+        return {
+            x: (clientX - rect.left) * (canvas.width / rect.width),
+            y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+    }
+
+    // --- イベントハンドラ (統合) ---
+    function onDown(e) {
+        const pos = getPos(e);
+        const mx = pos.x; const my = pos.y;
+        isMouseDown = true; lastPos = { x: mx, y: my }; activePoint = null; isDragging = false; selectionBox = null;
+        
+        if (mode === 'text') {
+            const txt = prompt("テキスト:");
+            if (txt) { save(); objects.push({ type: 'text', x: mx, y: my, text: txt, color: '#000000', fontSize: 24, bgColor: null }); }
+            isMouseDown = false; render(); return;
+        }
+        
+        for (let obj of selectedObjs) {
+            if (obj.type === 'text') {
+                const w = obj._lastW, h = obj._lastH;
+                const handles = [{x: obj.x-5, y: obj.y-5, id: 'lt'}, {x: obj.x+w+5, y: obj.y-5, id: 'rt'}, {x: obj.x-5, y: obj.y+h+5, id: 'lb'}, {x: obj.x+w+5, y: obj.y+h+5, id: 'rb'}];
+                for(let hdl of handles) { if (Math.sqrt((mx-hdl.x)**2 + (my-hdl.y)**2) < 15) { activePoint = { parent: obj, handle: hdl.id }; return; } }
+            }
+            if (obj.points) { for(let p of obj.points) { if (Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 20) { activePoint = p; return; } } }
+        }
+        
+        let found = objects.slice().reverse().find(o => {
+            if (o.type === 'player') return Math.sqrt((mx-o.x)**2 + (my-o.y)**2) < 30;
+            if (o.type === 'text') return mx >= o.x - 10 && mx <= o.x + o._lastW + 10 && my >= o.y - 10 && my <= o.y + o._lastH + 10;
+            if (o.type === 'shape') {
+                if (o.points.some(p => Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 20)) return true;
+                if (o.isFill && mx > Math.min(...o.points.map(p=>p.x)) && mx < Math.max(...o.points.map(p=>p.x)) && my > Math.min(...o.points.map(p=>p.y)) && my < Math.max(...o.points.map(p=>p.y))) return true;
+                for(let i=0; i<o.points.length; i++){
+                    if (o.shape === 'circle') {
+                        const r = Math.sqrt(Math.pow(o.points[1].x-o.points[0].x,2) + Math.pow(o.points[1].y-o.points[0].y,2));
+                        if (Math.abs(Math.sqrt((mx-o.points[0].x)**2 + (my-o.points[0].y)**2)-r) < 15) return true;
+                    } else if (distToSegment(mx, my, o.points[i], o.points[(i+1)%o.points.length]) < 15) return true;
+                }
+                return false;
+            }
+            const threshold = 15;
+            if(o.lineType === 'ortho') { for(let i=1; i<o.points.length; i++) { let flip = o.flipOrtho; if(i%2===0) flip = !flip; let corner = flip ? {x:o.points[i-1].x, y:o.points[i].y} : {x:o.points[i].x, y:o.points[i-1].y}; if(distToSegment(mx,my,o.points[i-1],corner) < threshold || distToSegment(mx,my,corner,o.points[i]) < threshold) return true; } return false; }
+            return distToSegment(mx,my,o.points[0],o.points[o.points.length-1]) < threshold;
+        });
+
+        if (found) { isDragging = true; if (!selectedObjs.includes(found)) selectedObjs = [found]; } 
+        else {
+            if (mode === 'move') { selectedObjs = []; selectionBox = { startX: mx, startY: my, x: mx, y: my, w: 0, h: 0 }; } 
+            else if (mode === 'shape') { tempShape = { type: 'shape', shape: currentShapeType, points: [{x:mx, y:my}, {x:mx, y:my}, {x:mx, y:my}, {x:mx, y:my}], color: '#3498db', style: currentPenStyle, isFill: isFill, isStroke: isStroke, opacity: currentOpacity, startX: mx, startY: my }; } 
+            else {
+                save(); let pts = [{x: mx, y: my}, {x: mx, y: my}]; if(currentLineType === 'curve') pts.splice(1, 0, {x: mx, y: my});
+                currentLine = { type: 'line', points: pts, style: currentPenStyle, terminal: currentTerminal, lineType: currentLineType, color: '#000000', flipOrtho: false };
+                objects.push(currentLine); selectedObjs = [currentLine]; activePoint = currentLine.points[currentLine.points.length-1];
+            }
+        }
+        render();
+    }
+
+    function onMove(e) {
+        if (!isMouseDown) return;
+        if (e.cancelable) e.preventDefault(); // スクロール防止
+        const pos = getPos(e);
+        const mx = pos.x; const my = pos.y;
+
+        if (activePoint && activePoint.handle) {
+            const obj = activePoint.parent; const dx = mx - lastPos.x;
+            const sizeChange = (activePoint.handle.includes('r') ? dx : -dx) / ((obj._lastW / obj.fontSize) * 0.5);
+            const newSize = Math.max(8, (obj.fontSize || 24) + sizeChange);
+            if (activePoint.handle.includes('l')) { const oldW = obj._lastW; obj.fontSize = newSize; ctx.font = newSize + "px sans-serif"; obj.x -= (ctx.measureText(obj.text).width - oldW); } else { obj.fontSize = newSize; }
+            lastPos = { x: mx, y: my };
+        } else if (selectionBox) { 
+            selectionBox.x = Math.min(mx, selectionBox.startX); selectionBox.y = Math.min(my, selectionBox.startY); selectionBox.w = Math.abs(mx - selectionBox.startX); selectionBox.h = Math.abs(my - selectionBox.startY);
+            selectedObjs = objects.filter(o => { const bx = (o.type === 'player' || o.type === 'text') ? o.x : o.points[0].x, by = (o.type === 'player' || o.type === 'text') ? o.y : o.points[0].y; return bx >= selectionBox.x && bx <= selectionBox.x + selectionBox.w && by >= selectionBox.y && by <= selectionBox.y + selectionBox.h; }); 
+        } else if (activePoint) { activePoint.x = mx; activePoint.y = my; } 
+        else if (tempShape) { const x1 = tempShape.startX, y1 = tempShape.startY; if (tempShape.shape === 'rect') tempShape.points = [{x:x1, y:y1}, {x:mx, y:y1}, {x:mx, y:my}, {x:x1, y:my}]; else if (tempShape.shape === 'tri') tempShape.points = [{x:(x1+mx)/2, y:y1}, {x:mx, y:my}, {x:x1, y:my}]; else if (tempShape.shape === 'circle') tempShape.points = [{x:x1, y:y1}, {x:mx, y:my}]; } 
+        else if (isDragging || (selectedObjs.length > 0 && isMouseDown)) {
+            const dx = mx - lastPos.x, dy = my - lastPos.y;
+            selectedObjs.forEach(o => { if (o.type === 'player' || o.type === 'text') { o.x += dx; o.y += dy; } else if (o.points) o.points.forEach(p => { p.x += dx; p.y += dy; }); });
+            lastPos = { x: mx, y: my };
+        }
+        render();
+    }
+
+    function onUp() {
+        if (tempShape) { save(); objects.push(tempShape); selectedObjs = [tempShape]; tempShape = null; }
+        isMouseDown = false; activePoint = null; currentLine = null; selectionBox = null; isDragging = false;
+        render();
+    }
+
+    // --- イベントリスナー登録 (マウス & タッチ) ---
+    canvas.addEventListener('mousedown', onDown);
+    canvas.addEventListener('touchstart', (e) => { onDown(e); }, { passive: false });
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove, { passive: false });
+
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchend', onUp);
+
+    // --- データ保存機能 (前バージョンの移植) ---
     const STORAGE_KEY = "FUTSAL_BOARD_SAVES";
 
     function updateSaveList() {
@@ -183,15 +295,7 @@
         const name = prompt("保存する名前を入力してください:", "データ" + (document.getElementById('saveList').options.length));
         if (!name) return;
         const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        // ボードの状態をオブジェクトにまとめる
-        data[name] = {
-            objects: objects,
-            isPortrait: isPortrait,
-            showZones: showZones,
-            laneMode: laneMode,
-            canvasW: canvas.width,
-            canvasH: canvas.height
-        };
+        data[name] = { objects, isPortrait, showZones, laneMode, canvasW: canvas.width, canvasH: canvas.height };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         alert("保存しました: " + name);
         updateSaveList();
@@ -203,18 +307,14 @@
         const allData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
         const data = allData[name];
         if (!data) return;
-
         if (objects.length > 0 && !confirm("現在のボードを破棄して「" + name + "」を読み込みますか？")) return;
-        
-        save(); // Undo履歴に追加
+        save();
         objects = data.objects;
         isPortrait = data.isPortrait;
         showZones = data.showZones;
         laneMode = data.laneMode;
         canvas.width = data.canvasW || 800;
         canvas.height = data.canvasH || 500;
-        
-        // UI状態の更新
         document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横";
         document.getElementById('toggleZonesBtn').className = showZones ? "active" : "";
         setLanes(laneMode);
@@ -230,8 +330,8 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         updateSaveList();
     }
-    // -------------------------
 
+    // --- 基本描画エンジン (fastdraw20の機能すべて) ---
     function save() { history.push(JSON.stringify(objects)); if (history.length > 50) history.shift(); }
 
     function drawCourt(targetCtx) {
@@ -356,53 +456,6 @@
 
     function distToSegment(px,py,p1,p2) { const dx = p2.x-p1.x, dy = p2.y-p1.y, l2 = dx*dx+dy*dy; if(l2 === 0) return Math.sqrt((px-p1.x)**2+(py-p1.y)**2); let t = Math.max(0, Math.min(1, ((px-p1.x)*dx+(py-p1.y)*dy)/l2)); return Math.sqrt((px-(p1.x+t*dx))**2+(py-(p1.y+t*dy))**2); }
 
-    canvas.onmousedown = (e) => {
-        const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        isMouseDown = true; lastPos = { x: mx, y: my }; activePoint = null; isDragging = false; selectionBox = null;
-        if (mode === 'text') { const txt = prompt("テキスト:"); if (txt) { save(); objects.push({ type: 'text', x: mx, y: my, text: txt, color: '#000000', fontSize: 24, bgColor: null }); } isMouseDown = false; render(); return; }
-        for (let obj of selectedObjs) {
-            if (obj.type === 'text') { const w = obj._lastW, h = obj._lastH; const handles = [{x: obj.x-5, y: obj.y-5, id: 'lt'}, {x: obj.x+w+5, y: obj.y-5, id: 'rt'}, {x: obj.x-5, y: obj.y+h+5, id: 'lb'}, {x: obj.x+w+5, y: obj.y+h+5, id: 'rb'}]; for(let hdl of handles) { if (Math.sqrt((mx-hdl.x)**2 + (my-hdl.y)**2) < 10) { activePoint = { parent: obj, handle: hdl.id }; return; } } }
-            if (obj.points) { for(let p of obj.points) { if (Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 15) { activePoint = p; return; } } }
-        }
-        let found = objects.slice().reverse().find(o => {
-            if (o.type === 'player') return Math.sqrt((mx-o.x)**2 + (my-o.y)**2) < 25;
-            if (o.type === 'text') return mx >= o.x - 5 && mx <= o.x + o._lastW + 5 && my >= o.y - 5 && my <= o.y + o._lastH + 5;
-            if (o.type === 'shape') {
-                if (o.points.some(p => Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 15)) return true;
-                if (o.isFill && mx > Math.min(...o.points.map(p=>p.x)) && mx < Math.max(...o.points.map(p=>p.x)) && my > Math.min(...o.points.map(p=>p.y)) && my < Math.max(...o.points.map(p=>p.y))) return true;
-                for(let i=0; i<o.points.length; i++){ if (o.shape === 'circle') { const r = Math.sqrt(Math.pow(o.points[1].x-o.points[0].x,2) + Math.pow(o.points[1].y-o.points[0].y,2)); if (Math.abs(Math.sqrt((mx-o.points[0].x)**2 + (my-o.points[0].y)**2)-r) < 10) return true; } else if (distToSegment(mx, my, o.points[i], o.points[(i+1)%o.points.length]) < 10) return true; }
-                return false;
-            }
-            const threshold = 10;
-            if(o.lineType === 'ortho') { for(let i=1; i<o.points.length; i++) { let flip = o.flipOrtho; if(i%2===0) flip = !flip; let corner = flip ? {x:o.points[i-1].x, y:o.points[i].y} : {x:o.points[i].x, y:o.points[i-1].y}; if(distToSegment(mx,my,o.points[i-1],corner) < threshold || distToSegment(mx,my,corner,o.points[i]) < threshold) return true; } return false; }
-            return distToSegment(mx,my,o.points[0],o.points[o.points.length-1]) < threshold;
-        });
-        if (found) { isDragging = true; if (!selectedObjs.includes(found)) selectedObjs = [found]; } 
-        else {
-            if (mode === 'move') { selectedObjs = []; selectionBox = { startX: mx, startY: my, x: mx, y: my, w: 0, h: 0 }; } 
-            else if (mode === 'shape') { tempShape = { type: 'shape', shape: currentShapeType, points: [{x:mx, y:my}, {x:mx, y:my}, {x:mx, y:my}, {x:mx, y:my}], color: '#3498db', style: currentPenStyle, isFill: isFill, isStroke: isStroke, opacity: currentOpacity, startX: mx, startY: my }; } else {
-                save(); let pts = [{x: mx, y: my}, {x: mx, y: my}]; if(currentLineType === 'curve') pts.splice(1, 0, {x: mx, y: my});
-                currentLine = { type: 'line', points: pts, style: currentPenStyle, terminal: currentTerminal, lineType: currentLineType, color: '#000000', flipOrtho: false };
-                objects.push(currentLine); selectedObjs = [currentLine]; activePoint = currentLine.points[currentLine.points.length-1];
-            }
-        }
-        render();
-    };
-
-    window.onmousemove = (e) => {
-        if (!isMouseDown) return; const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        if (activePoint && activePoint.handle) {
-            const obj = activePoint.parent; const dx = mx - lastPos.x; const sizeChange = (activePoint.handle.includes('r') ? dx : -dx) / ((obj._lastW / obj.fontSize) * 0.5); const newSize = Math.max(8, (obj.fontSize || 24) + sizeChange);
-            if (activePoint.handle.includes('l')) { const oldW = obj._lastW; obj.fontSize = newSize; ctx.font = newSize + "px sans-serif"; obj.x -= (ctx.measureText(obj.text).width - oldW); } else { obj.fontSize = newSize; }
-            lastPos = { x: mx, y: my };
-        } else if (selectionBox) { 
-            selectionBox.x = Math.min(mx, selectionBox.startX); selectionBox.y = Math.min(my, selectionBox.startY); selectionBox.w = Math.abs(mx - selectionBox.startX); selectionBox.h = Math.abs(my - selectionBox.startY); selectedObjs = objects.filter(o => { const bx = (o.type === 'player' || o.type === 'text') ? o.x : o.points[0].x, by = (o.type === 'player' || o.type === 'text') ? o.y : o.points[0].y; return bx >= selectionBox.x && bx <= selectionBox.x + selectionBox.w && by >= selectionBox.y && by <= selectionBox.y + selectionBox.h; }); 
-        } else if (activePoint) { activePoint.x = mx; activePoint.y = my; } else if (tempShape) { const x1 = tempShape.startX, y1 = tempShape.startY; if (tempShape.shape === 'rect') tempShape.points = [{x:x1, y:y1}, {x:mx, y:y1}, {x:mx, y:my}, {x:x1, y:my}]; else if (tempShape.shape === 'tri') tempShape.points = [{x:(x1+mx)/2, y:y1}, {x:mx, y:my}, {x:x1, y:my}]; else if (tempShape.shape === 'circle') tempShape.points = [{x:x1, y:y1}, {x:mx, y:my}]; } else if (isDragging || (selectedObjs.length > 0 && isMouseDown)) { const dx = mx - lastPos.x, dy = my - lastPos.y; selectedObjs.forEach(o => { if (o.type === 'player' || o.type === 'text') { o.x += dx; o.y += dy; } else if (o.points) o.points.forEach(p => { p.x += dx; p.y += dy; }); }); lastPos = { x: mx, y: my }; }
-        render();
-    };
-
-    window.onmouseup = () => { if (tempShape) { save(); objects.push(tempShape); selectedObjs = [tempShape]; tempShape = null; } isMouseDown = false; activePoint = null; currentLine = null; selectionBox = null; isDragging = false; render(); };
-
     function managePanelUI() {
         const panel = document.getElementById('text-editor-panel');
         const selectedText = selectedObjs.length === 1 && selectedObjs[0].type === 'text' ? selectedObjs[0] : null;
@@ -441,11 +494,7 @@
     function changeTerminal(t) { currentTerminal = t; selectedObjs.forEach(o => { if (o.type === 'line') o.terminal = t; }); render(); }
 
     function applyTemplate(type) {
-        if (objects.length > 0) {
-            if (!confirm("現在のボードをリセットしてテンプレートを配置しますか？\n（描いた図形や矢印は消去されます）")) {
-                return;
-            }
-        }
+        if (objects.length > 0) { if (!confirm("現在のボードをリセットしてテンプレートを配置しますか？")) return; }
         save(); objects = []; const w = canvas.width, h = canvas.height;
         const base = isPortrait ? [{ label: 'GL', x: w/2, y: h-60 }, { label: 'xGL', x: w/2, y: 60 }] : [{ label: 'GL', x: 60, y: h/2 }, { label: 'xGL', x: w-60, y: h/2 }];
         let p = [];
@@ -471,18 +520,11 @@
     function clearAll() { if(confirm("リセットしますか？")) { save(); objects = []; selectedObjs = []; render(); } }
 
     function exportImage() {
-        const fileName = prompt("保存するファイル名:", "futsal_board");
-        if (!fileName) return;
-        const offCanvas = document.createElement('canvas');
-        offCanvas.width = canvas.width; offCanvas.height = canvas.height;
-        const octx = offCanvas.getContext('2d');
-        octx.fillStyle = "#ffffff";
-        octx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+        const fileName = prompt("保存するファイル名:", "futsal_board"); if (!fileName) return;
+        const offCanvas = document.createElement('canvas'); offCanvas.width = canvas.width; offCanvas.height = canvas.height;
+        const octx = offCanvas.getContext('2d'); octx.fillStyle = "#ffffff"; octx.fillRect(0, 0, offCanvas.width, offCanvas.height);
         render(octx, true);
-        const link = document.createElement('a');
-        link.download = fileName + '.png';
-        link.href = offCanvas.toDataURL('image/png');
-        link.click();
+        const link = document.createElement('a'); link.download = fileName + '.png'; link.href = offCanvas.toDataURL('image/png'); link.click();
     }
 
     function toggleOrientation() {
@@ -495,7 +537,6 @@
         document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横"; render();
     }
     
-    // 初回読み込み時にリストを更新
     window.onload = () => { updateSaveList(); render(); };
 </script>
 </body>
