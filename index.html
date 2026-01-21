@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Futsal Board - Touch & Data Edition</title>
+    <title>Futsal Board - Precision Edition</title>
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #2c3e50; margin: 0; padding: 10px; }
         .controls { background: white; padding: 12px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 1300px; }
@@ -156,7 +156,6 @@
 
     const STORAGE_KEY = "FUTSAL_BOARD_SAVES";
 
-    // --- 座標取得 ---
     function getPointerPos(e) {
         const rect = canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -167,7 +166,6 @@
         };
     }
 
-    // --- イベントハンドラ ---
     function handleStart(e) {
         if (e.type === 'touchstart') e.preventDefault();
         const pos = getPointerPos(e);
@@ -181,25 +179,27 @@
             isMouseDown = false; render(); return; 
         }
 
+        // ハンドル判定しきい値を 20 -> 10 に縮小
         for (let obj of selectedObjs) {
             if (obj.type === 'text') { 
                 const w = obj._lastW, h = obj._lastH; 
                 const handles = [{x: obj.x-5, y: obj.y-5, id: 'lt'}, {x: obj.x+w+5, y: obj.y-5, id: 'rt'}, {x: obj.x-5, y: obj.y+h+5, id: 'lb'}, {x: obj.x+w+5, y: obj.y+h+5, id: 'rb'}]; 
-                for(let hdl of handles) { if (Math.sqrt((mx-hdl.x)**2 + (my-hdl.y)**2) < 20) { activePoint = { parent: obj, handle: hdl.id }; return; } } 
+                for(let hdl of handles) { if (Math.sqrt((mx-hdl.x)**2 + (my-hdl.y)**2) < 10) { activePoint = { parent: obj, handle: hdl.id }; return; } } 
             }
-            if (obj.points) { for(let p of obj.points) { if (Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 20) { activePoint = p; return; } } }
+            if (obj.points) { for(let p of obj.points) { if (Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 10) { activePoint = p; return; } } }
         }
 
         let found = objects.slice().reverse().find(o => {
-            if (o.type === 'player') return Math.sqrt((mx-o.x)**2 + (my-o.y)**2) < 25;
-            if (o.type === 'text') return mx >= o.x - 5 && mx <= o.x + o._lastW + 5 && my >= o.y - 5 && my <= o.y + o._lastH + 5;
+            // 全体的に判定距離（しきい値）を半分以下に縮小
+            if (o.type === 'player') return Math.sqrt((mx-o.x)**2 + (my-o.y)**2) < 14; 
+            if (o.type === 'text') return mx >= o.x - 2 && mx <= o.x + o._lastW + 2 && my >= o.y - 2 && my <= o.y + o._lastH + 2;
             if (o.type === 'shape') {
-                if (o.points.some(p => Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 15)) return true;
+                if (o.points.some(p => Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 8)) return true;
                 if (o.isFill && mx > Math.min(...o.points.map(p=>p.x)) && mx < Math.max(...o.points.map(p=>p.x)) && my > Math.min(...o.points.map(p=>p.y)) && my < Math.max(...o.points.map(p=>p.y))) return true;
-                for(let i=0; i<o.points.length; i++){ if (o.shape === 'circle') { const r = Math.sqrt(Math.pow(o.points[1].x-o.points[0].x,2) + Math.pow(o.points[1].y-o.points[0].y,2)); if (Math.abs(Math.sqrt((mx-o.points[0].x)**2 + (my-o.points[0].y)**2)-r) < 15) return true; } else if (distToSegment(mx, my, o.points[i], o.points[(i+1)%o.points.length]) < 15) return true; }
+                for(let i=0; i<o.points.length; i++){ if (o.shape === 'circle') { const r = Math.sqrt(Math.pow(o.points[1].x-o.points[0].x,2) + Math.pow(o.points[1].y-o.points[0].y,2)); if (Math.abs(Math.sqrt((mx-o.points[0].x)**2 + (my-o.points[0].y)**2)-r) < 8) return true; } else if (distToSegment(mx, my, o.points[i], o.points[(i+1)%o.points.length]) < 8) return true; }
                 return false;
             }
-            const threshold = 15;
+            const threshold = 8; // 線の選択感度を鋭敏に
             if(o.lineType === 'ortho') { for(let i=1; i<o.points.length; i++) { let flip = o.flipOrtho; if(i%2===0) flip = !flip; let corner = flip ? {x:o.points[i-1].x, y:o.points[i].y} : {x:o.points[i].x, y:o.points[i-1].y}; if(distToSegment(mx,my,o.points[i-1],corner) < threshold || distToSegment(mx,my,corner,o.points[i]) < threshold) return true; } return false; }
             for (let i = 1; i < o.points.length; i++) { if (distToSegment(mx, my, o.points[i-1], o.points[i]) < threshold) return true; }
             return false;
@@ -223,7 +223,6 @@
         if (e.type === 'touchmove') e.preventDefault();
         const pos = getPointerPos(e);
         const mx = pos.x, my = pos.y;
-
         if (activePoint && activePoint.handle) {
             const obj = activePoint.parent; const dx = mx - lastPos.x; const sizeChange = (activePoint.handle.includes('r') ? dx : -dx) / ((obj._lastW / obj.fontSize) * 0.5); const newSize = Math.max(8, (obj.fontSize || 24) + sizeChange);
             if (activePoint.handle.includes('l')) { const oldW = obj._lastW; obj.fontSize = newSize; ctx.font = newSize + "px sans-serif"; obj.x -= (ctx.measureText(obj.text).width - oldW); } else { obj.fontSize = newSize; }
@@ -249,33 +248,33 @@
 
     function updateSaveList() { const list = document.getElementById('saveList'); list.innerHTML = '<option value="">選択してください</option>'; const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); Object.keys(data).forEach(name => { const opt = document.createElement('option'); opt.value = name; opt.textContent = name; list.appendChild(opt); }); }
     function saveToStorage() { const name = prompt("保存名:", "データ" + document.getElementById('saveList').options.length); if (!name) return; const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); data[name] = { objects: objects, isPortrait: isPortrait, showZones: showZones, laneMode: laneMode, canvasW: canvas.width, canvasH: canvas.height }; localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); updateSaveList(); }
-    function loadFromStorage() { const name = document.getElementById('saveList').value; if (!name) return; const allData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); const data = allData[name]; if (!data) return; objects = data.objects; isPortrait = data.isPortrait; showZones = data.showZones; laneMode = data.laneMode; canvas.width = data.canvasW || 800; canvas.height = data.canvasH || 500; document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横"; render(); }
+    
+    // データ読込時に確認ダイアログを追加
+    function loadFromStorage() { 
+        const name = document.getElementById('saveList').value; 
+        if (!name) return; 
+        if (!confirm(`データ「${name}」を読み込みますか？\n（現在の編集内容は上書きされます）`)) return;
+        const allData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); 
+        const data = allData[name]; 
+        if (!data) return; 
+        save(); // 読込前もUndoできるように履歴へ保存
+        objects = data.objects; isPortrait = data.isPortrait; showZones = data.showZones; laneMode = data.laneMode; canvas.width = data.canvasW || 800; canvas.height = data.canvasH || 500; document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横"; render(); 
+    }
+    
     function deleteFromStorage() { const name = document.getElementById('saveList').value; if (!name || !confirm("削除しますか？")) return; const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); delete data[name]; localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); updateSaveList(); }
     function save() { history.push(JSON.stringify(objects)); if (history.length > 50) history.shift(); }
 
     function drawCourt(targetCtx) {
-        const w = canvas.width, h = canvas.height;
-        const margin = 20, pitchW = w - margin * 2, pitchH = h - margin * 2;
-        const goalW = 60, radius = 100;
+        const w = canvas.width, h = canvas.height, margin = 20, pitchW = w - margin * 2, pitchH = h - margin * 2, goalW = 60, radius = 100;
         targetCtx.save();
         targetCtx.strokeStyle = "#bdc3c7"; targetCtx.lineWidth = 1; targetCtx.setLineDash([]);
         if (showZones) {
-            if (!isPortrait) {
-                const third = pitchW / 3;
-                targetCtx.beginPath(); targetCtx.moveTo(margin + third, margin); targetCtx.lineTo(margin + third, h - margin); targetCtx.moveTo(margin + third * 2, margin); targetCtx.lineTo(margin + third * 2, h - margin); targetCtx.stroke();
-            } else {
-                const third = pitchH / 3;
-                targetCtx.beginPath(); targetCtx.moveTo(margin, margin + third); targetCtx.lineTo(w - margin, margin + third); targetCtx.moveTo(margin, margin + third * 2); targetCtx.lineTo(w - margin, margin + third * 2); targetCtx.stroke();
-            }
+            if (!isPortrait) { const third = pitchW / 3; targetCtx.beginPath(); targetCtx.moveTo(margin + third, margin); targetCtx.lineTo(margin + third, h - margin); targetCtx.moveTo(margin + third * 2, margin); targetCtx.lineTo(margin + third * 2, h - margin); targetCtx.stroke(); }
+            else { const third = pitchH / 3; targetCtx.beginPath(); targetCtx.moveTo(margin, margin + third); targetCtx.lineTo(w - margin, margin + third); targetCtx.moveTo(margin, margin + third * 2); targetCtx.lineTo(w - margin, margin + third * 2); targetCtx.stroke(); }
         }
         if (laneMode > 0) {
             const unit = !isPortrait ? pitchH / laneMode : pitchW / laneMode;
-            for(let i=1; i<laneMode; i++) {
-                targetCtx.beginPath();
-                if(!isPortrait) { targetCtx.moveTo(margin, margin + unit * i); targetCtx.lineTo(w - margin, margin + unit * i); }
-                else { targetCtx.moveTo(margin + unit * i, margin); targetCtx.lineTo(margin + unit * i, h - margin); }
-                targetCtx.stroke();
-            }
+            for(let i=1; i<laneMode; i++) { targetCtx.beginPath(); if(!isPortrait) { targetCtx.moveTo(margin, margin + unit * i); targetCtx.lineTo(w - margin, margin + unit * i); } else { targetCtx.moveTo(margin + unit * i, margin); targetCtx.lineTo(margin + unit * i, h - margin); } targetCtx.stroke(); }
         }
         targetCtx.restore();
         targetCtx.strokeStyle = "#333"; targetCtx.fillStyle = "#333"; targetCtx.lineWidth = 1.5; targetCtx.setLineDash([]);
@@ -284,10 +283,7 @@
             targetCtx.beginPath(); targetCtx.moveTo(w/2, margin); targetCtx.lineTo(w/2, h-margin); targetCtx.stroke();
             targetCtx.beginPath(); targetCtx.arc(w/2, h/2, 60, 0, Math.PI*2); targetCtx.stroke();
             const subDist = 80;
-            [w/2 - subDist, w/2 + subDist].forEach(x => {
-                targetCtx.beginPath(); targetCtx.moveTo(x, margin-5); targetCtx.lineTo(x, margin+10); targetCtx.stroke();
-                targetCtx.beginPath(); targetCtx.moveTo(x, h-margin+5); targetCtx.lineTo(x, h-margin-10); targetCtx.stroke();
-            });
+            [w/2 - subDist, w/2 + subDist].forEach(x => { targetCtx.beginPath(); targetCtx.moveTo(x, margin-5); targetCtx.lineTo(x, margin+10); targetCtx.stroke(); targetCtx.beginPath(); targetCtx.moveTo(x, h-margin+5); targetCtx.lineTo(x, h-margin-10); targetCtx.stroke(); });
             const drawD = (side) => {
                 const centerX = side === 'left' ? margin : w - margin, dir = side === 'left' ? 1 : -1;
                 targetCtx.beginPath();
@@ -301,10 +297,7 @@
             targetCtx.beginPath(); targetCtx.moveTo(margin, h/2); targetCtx.lineTo(w-margin, h/2); targetCtx.stroke();
             targetCtx.beginPath(); targetCtx.arc(w/2, h/2, 60, 0, Math.PI*2); targetCtx.stroke();
             const subDist = 80;
-            [h/2 - subDist, h/2 + subDist].forEach(y => {
-                targetCtx.beginPath(); targetCtx.moveTo(margin-5, y); targetCtx.lineTo(margin+10, y); targetCtx.stroke();
-                targetCtx.beginPath(); targetCtx.moveTo(w-margin+5, y); targetCtx.lineTo(w-margin-10, y); targetCtx.stroke();
-            });
+            [h/2 - subDist, h/2 + subDist].forEach(y => { targetCtx.beginPath(); targetCtx.moveTo(margin-5, y); targetCtx.lineTo(margin+10, y); targetCtx.stroke(); targetCtx.beginPath(); targetCtx.moveTo(w-margin+5, y); targetCtx.lineTo(w-margin-10, y); targetCtx.stroke(); });
             const drawDVertical = (side) => {
                 const centerY = side === 'top' ? margin : h - margin, dir = side === 'top' ? 1 : -1;
                 targetCtx.beginPath();
@@ -350,10 +343,10 @@
 
     function drawPlayerObj(targetCtx, obj, isSelected) {
         targetCtx.save(); targetCtx.font = "bold 24px sans-serif"; targetCtx.textAlign = "center"; targetCtx.textBaseline = "middle";
-        const radius = Math.max(22, (targetCtx.measureText(obj.label).width / 2) + 8);
+        const textW = targetCtx.measureText(obj.label).width, radius = Math.max(22, (textW / 2) + 8);
         if (obj.hasBall) { targetCtx.fillStyle = "#fff"; targetCtx.beginPath(); targetCtx.arc(obj.x, obj.y, radius, 0, Math.PI * 2); targetCtx.fill(); targetCtx.strokeStyle = obj.color || "#000"; targetCtx.lineWidth = 2.5; targetCtx.stroke(); }
         targetCtx.fillStyle = obj.color || "#000"; targetCtx.fillText(obj.label, obj.x, obj.y);
-        if (isSelected) { targetCtx.strokeStyle = "#007bff"; targetCtx.setLineDash([4,4]); targetCtx.strokeRect(obj.x-radius-5, obj.y-radius-5, (radius+5)*2, (radius+5)*2); }
+        if (isSelected) { targetCtx.strokeStyle = "#007bff"; targetCtx.setLineDash([4,4]); targetCtx.strokeRect(obj.x-radius-3, obj.y-radius-3, (radius+3)*2, (radius+3)*2); }
         targetCtx.restore();
     }
 
@@ -385,7 +378,6 @@
     }
 
     function distToSegment(px,py,p1,p2) { const dx = p2.x-p1.x, dy = p2.y-p1.y, l2 = dx*dx+dy*dy; if(l2 === 0) return Math.sqrt((px-p1.x)**2+(py-p1.y)**2); let t = Math.max(0, Math.min(1, ((px-p1.x)*dx+(py-p1.y)*dy)/l2)); return Math.sqrt((px-(p1.x+t*dx))**2+(py-(p1.y+t*dy))**2); }
-
     function managePanelUI() { const panel = document.getElementById('text-editor-panel'); const sel = selectedObjs.length === 1 && selectedObjs[0].type === 'text' ? selectedObjs[0] : null; if(sel) { panel.style.display = 'flex'; document.getElementById('editorTextColor').value = sel.color; document.getElementById('editorBgEnable').checked = !!sel.bgColor; if(sel.bgColor) document.getElementById('editorBgColor').value = sel.bgColor; document.getElementById('editorFontSize').value = Math.round(sel.fontSize); } else { panel.style.display = 'none'; } }
     function updateTerminalButtons() { if(selectedObjs.length === 1 && selectedObjs[0].type === 'line') { const t = selectedObjs[0].terminal; document.getElementById('termArrowBtn').className = t==='arrow'?'active':''; document.getElementById('termBlockBtn').className = t==='block'?'active':''; document.getElementById('termNoneBtn').className = t==='none'?'active':''; } }
     function updateTextFromPanel() { const sel = selectedObjs.find(o => o.type === 'text'); if(!sel) return; sel.color = document.getElementById('editorTextColor').value; sel.bgColor = document.getElementById('editorBgEnable').checked ? document.getElementById('editorBgColor').value : null; sel.fontSize = parseInt(document.getElementById('editorFontSize').value); render(); }
@@ -433,13 +425,10 @@
         const offCanvas = document.createElement('canvas');
         offCanvas.width = canvas.width; offCanvas.height = canvas.height;
         const octx = offCanvas.getContext('2d');
-        octx.fillStyle = "#ffffff";
-        octx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+        octx.fillStyle = "#ffffff"; octx.fillRect(0, 0, offCanvas.width, offCanvas.height);
         render(octx, true);
         const link = document.createElement('a');
-        link.download = fileName + '.png';
-        link.href = offCanvas.toDataURL('image/png');
-        link.click();
+        link.download = fileName + '.png'; link.href = offCanvas.toDataURL('image/png'); link.click();
     }
 
     function toggleOrientation() {
