@@ -2,16 +2,14 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Futsal Board - Touch & Data Edition</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #2c3e50; margin: 0; padding: 10px; overflow-x: hidden; }
-        .controls { background: white; padding: 12px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 100%; }
-        .canvas-container { position: relative; background: #fff; border: 2px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); touch-action: none; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #2c3e50; margin: 0; padding: 10px; }
+        .controls { background: white; padding: 12px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 1300px; }
+        .canvas-container { position: relative; background: #fff; border: 2px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         canvas { display: block; touch-action: none; cursor: crosshair; }
         button { padding: 6px 10px; font-weight: bold; border-radius: 5px; border: 1px solid #ccc; cursor: pointer; background: white; font-size: 13px; color: #333; -webkit-tap-highlight-color: transparent; }
         button:hover { background: #f8f9fa; }
-        button:active { background: #e0e0e0; }
         .active { background: #000 !important; color: #fff !important; }
         .label { font-size: 11px; color: #666; display: block; text-align: center; margin-bottom: 4px; }
         .group { border-right: 1px solid #eee; padding: 0 10px; display: flex; flex-direction: column; justify-content: flex-start; }
@@ -19,28 +17,20 @@
         .btn-save { background: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; }
         .btn-data { background: #3498db !important; color: white !important; border-color: #2980b9 !important; }
         #saveList { padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; max-width: 120px; }
-        .color-picker { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; align-items: center; }
-        .color-row { display: flex; gap: 4px; }
         .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ddd; cursor: pointer; }
-        #shape-selector { display: flex; gap: 4px; margin-top: 4px; align-items: center;}
-        input[type="range"] { width: 60px; vertical-align: middle; }
         #text-editor-panel {
             position: fixed; left: 10px; top: 100px; width: 120px; background: white; padding: 15px 10px; border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: none; flex-direction: column; gap: 15px; z-index: 100; border-left: 5px solid #3498db;
         }
-        .panel-item { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: bold; }
-        .panel-item input[type="number"] { width: 100%; padding: 3px; box-sizing: border-box; }
-        .panel-item input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; }
-        .panel-title { color: #3498db; font-size: 13px; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 5px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="text-editor-panel">
-    <div class="panel-title">TEXT設定</div>
-    <div class="panel-item">文字色<input type="color" id="editorTextColor" oninput="updateTextFromPanel()"></div>
-    <div class="panel-item"><label><input type="checkbox" id="editorBgEnable" onchange="updateTextFromPanel()"> 背景色</label><input type="color" id="editorBgColor" value="#ffffff" oninput="updateTextFromPanel()"></div>
-    <div class="panel-item">サイズ<input type="number" id="editorFontSize" min="8" max="200" oninput="updateTextFromPanel()"></div>
+    <div style="color: #3498db; font-size: 13px; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 5px; text-align: center;">TEXT設定</div>
+    <div style="display: flex; flex-direction: column; gap: 5px; font-size: 12px;">文字色<input type="color" id="editorTextColor" oninput="updateTextFromPanel()"></div>
+    <div style="display: flex; flex-direction: column; gap: 5px; font-size: 12px;"><label><input type="checkbox" id="editorBgEnable" onchange="updateTextFromPanel()"> 背景色</label><input type="color" id="editorBgColor" value="#ffffff" oninput="updateTextFromPanel()"></div>
+    <div style="display: flex; flex-direction: column; gap: 5px; font-size: 12px;">サイズ<input type="number" id="editorFontSize" min="8" max="200" oninput="updateTextFromPanel()"></div>
 </div>
 
 <div class="controls">
@@ -57,7 +47,6 @@
             </div>
         </div>
     </div>
-
     <div class="group">
         <span class="label">テンプレート配置</span>
         <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -84,12 +73,12 @@
     </div>
     <div class="group">
         <span class="label">色</span>
-        <div class="color-picker">
-            <div class="color-row">
+        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px; align-items: center;">
+            <div style="display: flex; gap: 4px;">
                 <div class="color-dot" style="background:#000000" onclick="changeColor('#000000')"></div>
                 <div class="color-dot" style="background:#3498db" onclick="changeColor('#3498db')"></div>
             </div>
-            <div class="color-row">
+            <div style="display: flex; gap: 4px;">
                 <div class="color-dot" style="background:#e74c3c" onclick="changeColor('#e74c3c')"></div>
                 <div class="color-dot" style="background:#2ecc71" onclick="changeColor('#2ecc71')"></div>
             </div>
@@ -103,7 +92,7 @@
             <button id="shapeBtn" onclick="setMode('shape')">図形</button>
             <button id="textBtn" onclick="setMode('text')">Ｔ</button>
         </div>
-        <div id="shape-selector">
+        <div style="display: flex; gap: 4px; margin-top: 4px; align-items: center;">
             <button id="circBtn" onclick="setShapeType('circle')">○</button>
             <button id="rectBtn" onclick="setShapeType('rect')">□</button>
             <button id="triBtn" onclick="setShapeType('tri')">△</button>
@@ -165,62 +154,55 @@
     let currentTerminal = 'arrow', currentOpacity = 0.5, isFill = false, isStroke = true;
     let isPortrait = false, showZones = false, laneMode = 0, tempShape = null;
 
-    // --- 座標計算関数 (マウスとタッチの共通化) ---
-    function getPos(e) {
+    const STORAGE_KEY = "FUTSAL_BOARD_SAVES";
+
+    // --- 座標取得 ---
+    function getPointerPos(e) {
         const rect = canvas.getBoundingClientRect();
-        let clientX, clientY;
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        // 表示サイズとキャンバス解像度の比率を考慮
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         return {
             x: (clientX - rect.left) * (canvas.width / rect.width),
             y: (clientY - rect.top) * (canvas.height / rect.height)
         };
     }
 
-    // --- イベントハンドラ (統合) ---
-    function onDown(e) {
-        const pos = getPos(e);
-        const mx = pos.x; const my = pos.y;
+    // --- イベントハンドラ ---
+    function handleStart(e) {
+        if (e.type === 'touchstart') e.preventDefault();
+        const pos = getPointerPos(e);
+        const mx = pos.x, my = pos.y;
+        
         isMouseDown = true; lastPos = { x: mx, y: my }; activePoint = null; isDragging = false; selectionBox = null;
         
-        if (mode === 'text') {
-            const txt = prompt("テキスト:");
-            if (txt) { save(); objects.push({ type: 'text', x: mx, y: my, text: txt, color: '#000000', fontSize: 24, bgColor: null }); }
-            isMouseDown = false; render(); return;
+        if (mode === 'text') { 
+            const txt = prompt("テキスト:"); 
+            if (txt) { save(); objects.push({ type: 'text', x: mx, y: my, text: txt, color: '#000000', fontSize: 24, bgColor: null }); } 
+            isMouseDown = false; render(); return; 
         }
-        
+
         for (let obj of selectedObjs) {
-            if (obj.type === 'text') {
-                const w = obj._lastW, h = obj._lastH;
-                const handles = [{x: obj.x-5, y: obj.y-5, id: 'lt'}, {x: obj.x+w+5, y: obj.y-5, id: 'rt'}, {x: obj.x-5, y: obj.y+h+5, id: 'lb'}, {x: obj.x+w+5, y: obj.y+h+5, id: 'rb'}];
-                for(let hdl of handles) { if (Math.sqrt((mx-hdl.x)**2 + (my-hdl.y)**2) < 15) { activePoint = { parent: obj, handle: hdl.id }; return; } }
+            if (obj.type === 'text') { 
+                const w = obj._lastW, h = obj._lastH; 
+                const handles = [{x: obj.x-5, y: obj.y-5, id: 'lt'}, {x: obj.x+w+5, y: obj.y-5, id: 'rt'}, {x: obj.x-5, y: obj.y+h+5, id: 'lb'}, {x: obj.x+w+5, y: obj.y+h+5, id: 'rb'}]; 
+                for(let hdl of handles) { if (Math.sqrt((mx-hdl.x)**2 + (my-hdl.y)**2) < 20) { activePoint = { parent: obj, handle: hdl.id }; return; } } 
             }
             if (obj.points) { for(let p of obj.points) { if (Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 20) { activePoint = p; return; } } }
         }
-        
+
         let found = objects.slice().reverse().find(o => {
-            if (o.type === 'player') return Math.sqrt((mx-o.x)**2 + (my-o.y)**2) < 30;
-            if (o.type === 'text') return mx >= o.x - 10 && mx <= o.x + o._lastW + 10 && my >= o.y - 10 && my <= o.y + o._lastH + 10;
+            if (o.type === 'player') return Math.sqrt((mx-o.x)**2 + (my-o.y)**2) < 25;
+            if (o.type === 'text') return mx >= o.x - 5 && mx <= o.x + o._lastW + 5 && my >= o.y - 5 && my <= o.y + o._lastH + 5;
             if (o.type === 'shape') {
-                if (o.points.some(p => Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 20)) return true;
+                if (o.points.some(p => Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 15)) return true;
                 if (o.isFill && mx > Math.min(...o.points.map(p=>p.x)) && mx < Math.max(...o.points.map(p=>p.x)) && my > Math.min(...o.points.map(p=>p.y)) && my < Math.max(...o.points.map(p=>p.y))) return true;
-                for(let i=0; i<o.points.length; i++){
-                    if (o.shape === 'circle') {
-                        const r = Math.sqrt(Math.pow(o.points[1].x-o.points[0].x,2) + Math.pow(o.points[1].y-o.points[0].y,2));
-                        if (Math.abs(Math.sqrt((mx-o.points[0].x)**2 + (my-o.points[0].y)**2)-r) < 15) return true;
-                    } else if (distToSegment(mx, my, o.points[i], o.points[(i+1)%o.points.length]) < 15) return true;
-                }
+                for(let i=0; i<o.points.length; i++){ if (o.shape === 'circle') { const r = Math.sqrt(Math.pow(o.points[1].x-o.points[0].x,2) + Math.pow(o.points[1].y-o.points[0].y,2)); if (Math.abs(Math.sqrt((mx-o.points[0].x)**2 + (my-o.points[0].y)**2)-r) < 15) return true; } else if (distToSegment(mx, my, o.points[i], o.points[(i+1)%o.points.length]) < 15) return true; }
                 return false;
             }
             const threshold = 15;
             if(o.lineType === 'ortho') { for(let i=1; i<o.points.length; i++) { let flip = o.flipOrtho; if(i%2===0) flip = !flip; let corner = flip ? {x:o.points[i-1].x, y:o.points[i].y} : {x:o.points[i].x, y:o.points[i-1].y}; if(distToSegment(mx,my,o.points[i-1],corner) < threshold || distToSegment(mx,my,corner,o.points[i]) < threshold) return true; } return false; }
-            return distToSegment(mx,my,o.points[0],o.points[o.points.length-1]) < threshold;
+            for (let i = 1; i < o.points.length; i++) { if (distToSegment(mx, my, o.points[i-1], o.points[i]) < threshold) return true; }
+            return false;
         });
 
         if (found) { isDragging = true; if (!selectedObjs.includes(found)) selectedObjs = [found]; } 
@@ -236,102 +218,39 @@
         render();
     }
 
-    function onMove(e) {
+    function handleMove(e) {
         if (!isMouseDown) return;
-        if (e.cancelable) e.preventDefault(); // スクロール防止
-        const pos = getPos(e);
-        const mx = pos.x; const my = pos.y;
+        if (e.type === 'touchmove') e.preventDefault();
+        const pos = getPointerPos(e);
+        const mx = pos.x, my = pos.y;
 
         if (activePoint && activePoint.handle) {
-            const obj = activePoint.parent; const dx = mx - lastPos.x;
-            const sizeChange = (activePoint.handle.includes('r') ? dx : -dx) / ((obj._lastW / obj.fontSize) * 0.5);
-            const newSize = Math.max(8, (obj.fontSize || 24) + sizeChange);
+            const obj = activePoint.parent; const dx = mx - lastPos.x; const sizeChange = (activePoint.handle.includes('r') ? dx : -dx) / ((obj._lastW / obj.fontSize) * 0.5); const newSize = Math.max(8, (obj.fontSize || 24) + sizeChange);
             if (activePoint.handle.includes('l')) { const oldW = obj._lastW; obj.fontSize = newSize; ctx.font = newSize + "px sans-serif"; obj.x -= (ctx.measureText(obj.text).width - oldW); } else { obj.fontSize = newSize; }
             lastPos = { x: mx, y: my };
         } else if (selectionBox) { 
-            selectionBox.x = Math.min(mx, selectionBox.startX); selectionBox.y = Math.min(my, selectionBox.startY); selectionBox.w = Math.abs(mx - selectionBox.startX); selectionBox.h = Math.abs(my - selectionBox.startY);
-            selectedObjs = objects.filter(o => { const bx = (o.type === 'player' || o.type === 'text') ? o.x : o.points[0].x, by = (o.type === 'player' || o.type === 'text') ? o.y : o.points[0].y; return bx >= selectionBox.x && bx <= selectionBox.x + selectionBox.w && by >= selectionBox.y && by <= selectionBox.y + selectionBox.h; }); 
-        } else if (activePoint) { activePoint.x = mx; activePoint.y = my; } 
-        else if (tempShape) { const x1 = tempShape.startX, y1 = tempShape.startY; if (tempShape.shape === 'rect') tempShape.points = [{x:x1, y:y1}, {x:mx, y:y1}, {x:mx, y:my}, {x:x1, y:my}]; else if (tempShape.shape === 'tri') tempShape.points = [{x:(x1+mx)/2, y:y1}, {x:mx, y:my}, {x:x1, y:my}]; else if (tempShape.shape === 'circle') tempShape.points = [{x:x1, y:y1}, {x:mx, y:my}]; } 
-        else if (isDragging || (selectedObjs.length > 0 && isMouseDown)) {
-            const dx = mx - lastPos.x, dy = my - lastPos.y;
-            selectedObjs.forEach(o => { if (o.type === 'player' || o.type === 'text') { o.x += dx; o.y += dy; } else if (o.points) o.points.forEach(p => { p.x += dx; p.y += dy; }); });
-            lastPos = { x: mx, y: my };
-        }
+            selectionBox.x = Math.min(mx, selectionBox.startX); selectionBox.y = Math.min(my, selectionBox.startY); selectionBox.w = Math.abs(mx - selectionBox.startX); selectionBox.h = Math.abs(my - selectionBox.startY); selectedObjs = objects.filter(o => { const bx = (o.type === 'player' || o.type === 'text') ? o.x : o.points[0].x, by = (o.type === 'player' || o.type === 'text') ? o.y : o.points[0].y; return bx >= selectionBox.x && bx <= selectionBox.x + selectionBox.w && by >= selectionBox.y && by <= selectionBox.y + selectionBox.h; }); 
+        } else if (activePoint) { activePoint.x = mx; activePoint.y = my; } else if (tempShape) { const x1 = tempShape.startX, y1 = tempShape.startY; if (tempShape.shape === 'rect') tempShape.points = [{x:x1, y:y1}, {x:mx, y:y1}, {x:mx, y:my}, {x:x1, y:my}]; else if (tempShape.shape === 'tri') tempShape.points = [{x:(x1+mx)/2, y:y1}, {x:mx, y:my}, {x:x1, y:my}]; else if (tempShape.shape === 'circle') tempShape.points = [{x:x1, y:y1}, {x:mx, y:my}]; } else if (isDragging || (selectedObjs.length > 0 && isMouseDown)) { const dx = mx - lastPos.x, dy = my - lastPos.y; selectedObjs.forEach(o => { if (o.type === 'player' || o.type === 'text') { o.x += dx; o.y += dy; } else if (o.points) o.points.forEach(p => { p.x += dx; p.y += dy; }); }); lastPos = { x: mx, y: my }; }
         render();
     }
 
-    function onUp() {
-        if (tempShape) { save(); objects.push(tempShape); selectedObjs = [tempShape]; tempShape = null; }
-        isMouseDown = false; activePoint = null; currentLine = null; selectionBox = null; isDragging = false;
+    function handleEnd() {
+        if (tempShape) { save(); objects.push(tempShape); selectedObjs = [tempShape]; tempShape = null; } 
+        isMouseDown = false; activePoint = null; currentLine = null; selectionBox = null; isDragging = false; 
         render();
     }
 
-    // --- イベントリスナー登録 (マウス & タッチ) ---
-    canvas.addEventListener('mousedown', onDown);
-    canvas.addEventListener('touchstart', (e) => { onDown(e); }, { passive: false });
+    canvas.addEventListener('mousedown', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('touchstart', handleStart, {passive: false});
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('touchend', handleEnd);
 
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('touchmove', onMove, { passive: false });
-
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchend', onUp);
-
-    // --- データ保存機能 (前バージョンの移植) ---
-    const STORAGE_KEY = "FUTSAL_BOARD_SAVES";
-
-    function updateSaveList() {
-        const list = document.getElementById('saveList');
-        list.innerHTML = '<option value="">選択してください</option>';
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        Object.keys(data).forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name; opt.textContent = name;
-            list.appendChild(opt);
-        });
-    }
-
-    function saveToStorage() {
-        const name = prompt("保存する名前を入力してください:", "データ" + (document.getElementById('saveList').options.length));
-        if (!name) return;
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        data[name] = { objects, isPortrait, showZones, laneMode, canvasW: canvas.width, canvasH: canvas.height };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        alert("保存しました: " + name);
-        updateSaveList();
-    }
-
-    function loadFromStorage() {
-        const name = document.getElementById('saveList').value;
-        if (!name) return alert("読み込むデータを選択してください");
-        const allData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        const data = allData[name];
-        if (!data) return;
-        if (objects.length > 0 && !confirm("現在のボードを破棄して「" + name + "」を読み込みますか？")) return;
-        save();
-        objects = data.objects;
-        isPortrait = data.isPortrait;
-        showZones = data.showZones;
-        laneMode = data.laneMode;
-        canvas.width = data.canvasW || 800;
-        canvas.height = data.canvasH || 500;
-        document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横";
-        document.getElementById('toggleZonesBtn').className = showZones ? "active" : "";
-        setLanes(laneMode);
-        render();
-    }
-
-    function deleteFromStorage() {
-        const name = document.getElementById('saveList').value;
-        if (!name) return;
-        if (!confirm("「" + name + "」を削除しますか？")) return;
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        delete data[name];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        updateSaveList();
-    }
-
-    // --- 基本描画エンジン (fastdraw20の機能すべて) ---
+    function updateSaveList() { const list = document.getElementById('saveList'); list.innerHTML = '<option value="">選択してください</option>'; const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); Object.keys(data).forEach(name => { const opt = document.createElement('option'); opt.value = name; opt.textContent = name; list.appendChild(opt); }); }
+    function saveToStorage() { const name = prompt("保存名:", "データ" + document.getElementById('saveList').options.length); if (!name) return; const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); data[name] = { objects: objects, isPortrait: isPortrait, showZones: showZones, laneMode: laneMode, canvasW: canvas.width, canvasH: canvas.height }; localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); updateSaveList(); }
+    function loadFromStorage() { const name = document.getElementById('saveList').value; if (!name) return; const allData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); const data = allData[name]; if (!data) return; objects = data.objects; isPortrait = data.isPortrait; showZones = data.showZones; laneMode = data.laneMode; canvas.width = data.canvasW || 800; canvas.height = data.canvasH || 500; document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横"; render(); }
+    function deleteFromStorage() { const name = document.getElementById('saveList').value; if (!name || !confirm("削除しますか？")) return; const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); delete data[name]; localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); updateSaveList(); }
     function save() { history.push(JSON.stringify(objects)); if (history.length > 50) history.shift(); }
 
     function drawCourt(targetCtx) {
@@ -364,6 +283,11 @@
         if (!isPortrait) {
             targetCtx.beginPath(); targetCtx.moveTo(w/2, margin); targetCtx.lineTo(w/2, h-margin); targetCtx.stroke();
             targetCtx.beginPath(); targetCtx.arc(w/2, h/2, 60, 0, Math.PI*2); targetCtx.stroke();
+            const subDist = 80;
+            [w/2 - subDist, w/2 + subDist].forEach(x => {
+                targetCtx.beginPath(); targetCtx.moveTo(x, margin-5); targetCtx.lineTo(x, margin+10); targetCtx.stroke();
+                targetCtx.beginPath(); targetCtx.moveTo(x, h-margin+5); targetCtx.lineTo(x, h-margin-10); targetCtx.stroke();
+            });
             const drawD = (side) => {
                 const centerX = side === 'left' ? margin : w - margin, dir = side === 'left' ? 1 : -1;
                 targetCtx.beginPath();
@@ -376,6 +300,11 @@
         } else {
             targetCtx.beginPath(); targetCtx.moveTo(margin, h/2); targetCtx.lineTo(w-margin, h/2); targetCtx.stroke();
             targetCtx.beginPath(); targetCtx.arc(w/2, h/2, 60, 0, Math.PI*2); targetCtx.stroke();
+            const subDist = 80;
+            [h/2 - subDist, h/2 + subDist].forEach(y => {
+                targetCtx.beginPath(); targetCtx.moveTo(margin-5, y); targetCtx.lineTo(margin+10, y); targetCtx.stroke();
+                targetCtx.beginPath(); targetCtx.moveTo(w-margin+5, y); targetCtx.lineTo(w-margin-10, y); targetCtx.stroke();
+            });
             const drawDVertical = (side) => {
                 const centerY = side === 'top' ? margin : h - margin, dir = side === 'top' ? 1 : -1;
                 targetCtx.beginPath();
@@ -389,7 +318,7 @@
     }
 
     function toggleZones() { showZones = !showZones; document.getElementById('toggleZonesBtn').className = showZones ? "active" : ""; render(); }
-    function setLanes(m) { laneMode = m; document.getElementById('lane3Btn').className = (m === 3 ? "active" : ""); document.getElementById('lane4Btn').className = (m === 4 ? "active" : ""); document.getElementById('laneOffBtn').className = (m === 0 ? "active" : ""); render(); }
+    function setLanes(m) { laneMode = m; ['lane3Btn','lane4Btn','laneOffBtn'].forEach(id => document.getElementById(id).className = (id.includes(m==0?'Off':m)?'active':'')); render(); }
     
     function render(targetCtx = ctx, isExport = false) {
         if (!isExport) targetCtx.clearRect(0, 0, canvas.width, canvas.height);
@@ -402,7 +331,7 @@
             else drawPlayerObj(targetCtx, obj, isSelected);
         });
         if (tempShape && !isExport) drawShape(targetCtx, tempShape, false);
-        if (selectionBox && !isExport) { targetCtx.strokeStyle = "rgba(0,123,255,0.8)"; targetCtx.setLineDash([5,5]); targetCtx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h); targetCtx.fillStyle = "rgba(0,123,255,0.1)"; targetCtx.fillRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h); targetCtx.setLineDash([]); }
+        if (selectionBox && !isExport) { targetCtx.strokeStyle = "rgba(0,123,255,0.8)"; targetCtx.setLineDash([5,5]); targetCtx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h); targetCtx.setLineDash([]); }
         if (!isExport) { managePanelUI(); updateTerminalButtons(); }
     }
 
@@ -422,9 +351,9 @@
     function drawPlayerObj(targetCtx, obj, isSelected) {
         targetCtx.save(); targetCtx.font = "bold 24px sans-serif"; targetCtx.textAlign = "center"; targetCtx.textBaseline = "middle";
         const radius = Math.max(22, (targetCtx.measureText(obj.label).width / 2) + 8);
-        if (obj.hasBall) { targetCtx.fillStyle = "#fff"; targetCtx.beginPath(); targetCtx.arc(obj.x, obj.y, radius, 0, Math.PI * 2); targetCtx.fill(); targetCtx.strokeStyle = obj.color || "#000"; targetCtx.lineWidth = 2.5; targetCtx.beginPath(); targetCtx.arc(obj.x, obj.y, radius, 0, Math.PI * 2); targetCtx.stroke(); }
+        if (obj.hasBall) { targetCtx.fillStyle = "#fff"; targetCtx.beginPath(); targetCtx.arc(obj.x, obj.y, radius, 0, Math.PI * 2); targetCtx.fill(); targetCtx.strokeStyle = obj.color || "#000"; targetCtx.lineWidth = 2.5; targetCtx.stroke(); }
         targetCtx.fillStyle = obj.color || "#000"; targetCtx.fillText(obj.label, obj.x, obj.y);
-        if (isSelected) { targetCtx.strokeStyle = "#007bff"; targetCtx.setLineDash([4,4]); targetCtx.lineWidth = 1; targetCtx.strokeRect(obj.x-radius-5, obj.y-radius-5, (radius+5)*2, (radius+5)*2); }
+        if (isSelected) { targetCtx.strokeStyle = "#007bff"; targetCtx.setLineDash([4,4]); targetCtx.strokeRect(obj.x-radius-5, obj.y-radius-5, (radius+5)*2, (radius+5)*2); }
         targetCtx.restore();
     }
 
@@ -434,97 +363,83 @@
         else if (obj.shape === 'circle') { const r = Math.sqrt(Math.pow(pts[1].x - pts[0].x, 2) + Math.pow(pts[1].y - pts[0].y, 2)); targetCtx.arc(pts[0].x, pts[0].y, r, 0, Math.PI * 2); }
         else if (obj.shape === 'tri') { targetCtx.moveTo(pts[0].x, pts[0].y); targetCtx.lineTo(pts[1].x, pts[1].y); targetCtx.lineTo(pts[2].x, pts[2].y); targetCtx.closePath(); }
         if (obj.isFill) { targetCtx.globalAlpha = obj.opacity || 0.5; targetCtx.fillStyle = color; targetCtx.fill(); }
-        if (obj.isStroke) { targetCtx.globalAlpha = 1.0; targetCtx.strokeStyle = isSelected ? "#007bff" : color; targetCtx.lineWidth = isSelected ? 4 : 2.5; if (obj.style === 'dashed') targetCtx.setLineDash([8, 8]); targetCtx.stroke(); }
-        if (isSelected) { targetCtx.globalAlpha = 1.0; targetCtx.setLineDash([]); targetCtx.fillStyle = "white"; targetCtx.strokeStyle = "#007bff"; pts.forEach(p => { targetCtx.beginPath(); targetCtx.arc(p.x, p.y, 6, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }); }
+        if (obj.isStroke) { targetCtx.globalAlpha = 1.0; targetCtx.strokeStyle = isSelected ? "#007bff" : color; targetCtx.lineWidth = 2.5; if (obj.style === 'dashed') targetCtx.setLineDash([8, 8]); targetCtx.stroke(); }
+        if (isSelected) { targetCtx.setLineDash([]); targetCtx.fillStyle = "white"; targetCtx.strokeStyle = "#007bff"; pts.forEach(p => { targetCtx.beginPath(); targetCtx.arc(p.x, p.y, 6, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }); }
         targetCtx.restore();
     }
 
     function drawStyledLine(targetCtx, obj, isSelected) {
-        targetCtx.save(); targetCtx.strokeStyle = isSelected ? "#007bff" : (obj.color || "#000"); targetCtx.lineWidth = isSelected ? 4 : 2.5; targetCtx.lineCap = "round"; targetCtx.lineJoin = "round";
+        targetCtx.save(); targetCtx.strokeStyle = isSelected ? "#007bff" : (obj.color || "#000"); targetCtx.lineWidth = 2.5; targetCtx.lineCap = "round";
         const pts = obj.points; let pathPts = [];
         if (obj.lineType === 'ortho') { pathPts.push(pts[0]); for (let i = 1; i < pts.length; i++) { let flip = obj.flipOrtho; if (i % 2 === 0) flip = !flip; if (flip) pathPts.push({ x: pts[i-1].x, y: pts[i].y }); else pathPts.push({ x: pts[i].x, y: pts[i-1].y }); pathPts.push(pts[i]); } }
         else if (obj.lineType === 'curve' && pts.length === 3) { for (let i = 0; i <= 40; i++) { const t = i / 40; pathPts.push({ x: (1-t)**2 * pts[0].x + 2*(1-t)*t * pts[1].x + t**2 * pts[2].x, y: (1-t)**2 * pts[0].y + 2*(1-t)*t * pts[1].y + t**2 * pts[2].y }); } }
         else pathPts = pts;
-        if (obj.style === 'dashed') targetCtx.setLineDash([8, 8]); targetCtx.beginPath(); targetCtx.moveTo(pathPts[0].x, pathPts[0].y);
+        if (obj.style === 'dashed') targetCtx.setLineDash([8, 8]); 
+        targetCtx.beginPath(); targetCtx.moveTo(pathPts[0].x, pathPts[0].y);
         if (obj.style === 'zigzag' && obj.lineType !== 'ortho') { let totalDist = 0; for (let i = 1; i < pathPts.length; i++) { const prev = pathPts[i-1], p = pathPts[i], dx = p.x-prev.x, dy = p.y-prev.y, dist = Math.sqrt(dx*dx+dy*dy), angle = Math.atan2(dy, dx), segments = Math.floor(dist / 2); for(let j=1; j<=segments; j++){ const step = j/segments, currX = prev.x + dx*step, currY = prev.y + dy*step, offset = Math.sin((totalDist + dist*step) * 0.3) * 3.5; targetCtx.lineTo(currX + Math.cos(angle+Math.PI/2)*offset, currY + Math.sin(angle+Math.PI/2)*offset); } totalDist += dist; } }
         else pathPts.forEach(p => targetCtx.lineTo(p.x, p.y));
         targetCtx.stroke();
-        if (pathPts.length > 1 && obj.terminal !== 'none') { targetCtx.setLineDash([]); const last = pathPts[pathPts.length-1], prev = pathPts[pathPts.length-2], angle = Math.atan2(last.y - prev.y, last.x - prev.x); targetCtx.fillStyle = targetCtx.strokeStyle; if (obj.terminal === 'arrow') { targetCtx.beginPath(); targetCtx.moveTo(last.x, last.y); targetCtx.lineTo(last.x-14*targetCtx.canvas.width/800*Math.cos(angle-0.45), last.y-14*targetCtx.canvas.width/800*Math.sin(angle-0.45)); targetCtx.lineTo(last.x-14*targetCtx.canvas.width/800*Math.cos(angle+0.45), last.y-14*targetCtx.canvas.width/800*Math.sin(angle+0.45)); targetCtx.fill(); } else if (obj.terminal === 'block') { const bx = Math.sin(angle)*10, by = Math.cos(angle)*10; targetCtx.beginPath(); targetCtx.moveTo(last.x+bx, last.y-by); targetCtx.lineTo(last.x-bx, last.y+by); targetCtx.lineWidth=4; targetCtx.stroke(); } }
-        if (isSelected) { targetCtx.fillStyle = "white"; targetCtx.strokeStyle = "#007bff"; targetCtx.setLineDash([]); pts.forEach(p => { targetCtx.beginPath(); targetCtx.arc(p.x, p.y, 6, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }); }
+        if (pathPts.length > 1 && obj.terminal !== 'none') { targetCtx.setLineDash([]); const last = pathPts[pathPts.length-1], prev = pathPts[pathPts.length-2], angle = Math.atan2(last.y - prev.y, last.x - prev.x); targetCtx.fillStyle = targetCtx.strokeStyle; if (obj.terminal === 'arrow') { targetCtx.beginPath(); targetCtx.moveTo(last.x, last.y); targetCtx.lineTo(last.x-14*Math.cos(angle-0.45), last.y-14*Math.sin(angle-0.45)); targetCtx.lineTo(last.x-14*Math.cos(angle+0.45), last.y-14*Math.sin(angle+0.45)); targetCtx.fill(); } else if (obj.terminal === 'block') { const bx = Math.sin(angle)*10, by = Math.cos(angle)*10; targetCtx.beginPath(); targetCtx.moveTo(last.x+bx, last.y-by); targetCtx.lineTo(last.x-bx, last.y+by); targetCtx.lineWidth=4; targetCtx.stroke(); } }
+        if (isSelected) { targetCtx.setLineDash([]); targetCtx.fillStyle = "white"; targetCtx.strokeStyle = "#007bff"; pts.forEach(p => { targetCtx.beginPath(); targetCtx.arc(p.x, p.y, 6, 0, Math.PI*2); targetCtx.fill(); targetCtx.stroke(); }); }
         targetCtx.restore();
     }
 
     function distToSegment(px,py,p1,p2) { const dx = p2.x-p1.x, dy = p2.y-p1.y, l2 = dx*dx+dy*dy; if(l2 === 0) return Math.sqrt((px-p1.x)**2+(py-p1.y)**2); let t = Math.max(0, Math.min(1, ((px-p1.x)*dx+(py-p1.y)*dy)/l2)); return Math.sqrt((px-(p1.x+t*dx))**2+(py-(p1.y+t*dy))**2); }
 
-    function managePanelUI() {
-        const panel = document.getElementById('text-editor-panel');
-        const selectedText = selectedObjs.length === 1 && selectedObjs[0].type === 'text' ? selectedObjs[0] : null;
-        if (selectedText) { panel.style.display = 'flex'; if (!isMouseDown) { document.getElementById('editorTextColor').value = selectedText.color || '#000000'; document.getElementById('editorBgEnable').checked = !!selectedText.bgColor; document.getElementById('editorBgColor').value = selectedText.bgColor || '#ffffff'; document.getElementById('editorFontSize').value = Math.round(selectedText.fontSize || 24); } } else { panel.style.display = 'none'; }
-    }
-
-    function updateTerminalButtons() {
-        ['Arrow', 'Block', 'None'].forEach(t => { const btn = document.getElementById('term' + t + 'Btn'); if (btn) btn.className = (currentTerminal === t.toLowerCase() ? 'active' : ''); });
-    }
-
-    function updateTextFromPanel() { const selectedText = selectedObjs.find(o => o.type === 'text'); if (!selectedText) return; selectedText.color = document.getElementById('editorTextColor').value; const bgEnable = document.getElementById('editorBgEnable').checked; selectedText.bgColor = bgEnable ? document.getElementById('editorBgColor').value : null; selectedText.fontSize = parseInt(document.getElementById('editorFontSize').value) || 24; render(); }
-    
-    function setMode(m) { 
-        mode = m; document.getElementById('moveBtn').className = (m === 'move' ? 'active' : ''); document.getElementById('drawBtn').className = (m === 'draw' ? 'active' : ''); document.getElementById('shapeBtn').className = (m === 'shape' ? 'active' : ''); document.getElementById('textBtn').className = (m === 'text' ? 'active' : ''); 
-        if (m !== 'shape') { document.getElementById('circBtn').className = ''; document.getElementById('rectBtn').className = ''; document.getElementById('triBtn').className = ''; }
-    }
-
-    function setShapeType(s) { currentShapeType = s; setMode('shape'); ['circ','rect','tri'].forEach(id => document.getElementById(id+'Btn').className = (id.startsWith(s.substring(0,3))?'active':'')); }
+    function managePanelUI() { const panel = document.getElementById('text-editor-panel'); const sel = selectedObjs.length === 1 && selectedObjs[0].type === 'text' ? selectedObjs[0] : null; if(sel) { panel.style.display = 'flex'; document.getElementById('editorTextColor').value = sel.color; document.getElementById('editorBgEnable').checked = !!sel.bgColor; if(sel.bgColor) document.getElementById('editorBgColor').value = sel.bgColor; document.getElementById('editorFontSize').value = Math.round(sel.fontSize); } else { panel.style.display = 'none'; } }
+    function updateTerminalButtons() { if(selectedObjs.length === 1 && selectedObjs[0].type === 'line') { const t = selectedObjs[0].terminal; document.getElementById('termArrowBtn').className = t==='arrow'?'active':''; document.getElementById('termBlockBtn').className = t==='block'?'active':''; document.getElementById('termNoneBtn').className = t==='none'?'active':''; } }
+    function updateTextFromPanel() { const sel = selectedObjs.find(o => o.type === 'text'); if(!sel) return; sel.color = document.getElementById('editorTextColor').value; sel.bgColor = document.getElementById('editorBgEnable').checked ? document.getElementById('editorBgColor').value : null; sel.fontSize = parseInt(document.getElementById('editorFontSize').value); render(); }
+    function setMode(m) { mode = m; ['moveBtn','drawBtn','shapeBtn','textBtn'].forEach(id => document.getElementById(id).className = (id.startsWith(m)?'active':'')); }
+    function setShapeType(s) { currentShapeType = s; setMode('shape'); ['circBtn','rectBtn','triBtn'].forEach(id => document.getElementById(id).className = (id.startsWith(s.substring(0,3))?'active':'')); }
     function toggleFill() { isFill = !isFill; document.getElementById('fillBtn').className = isFill ? 'active' : ''; selectedObjs.forEach(o => { if(o.type==='shape') o.isFill = isFill; }); render(); }
     function toggleStroke() { isStroke = !isStroke; document.getElementById('strokeBtn').className = isStroke ? 'active' : ''; selectedObjs.forEach(o => { if(o.type==='shape') o.isStroke = isStroke; }); render(); }
     function changeOpacity(v) { currentOpacity = parseFloat(v); selectedObjs.forEach(o => { if(o.type==='shape') o.opacity = currentOpacity; }); render(); }
-    function changeColor(color) { if (selectedObjs.length > 0) { save(); selectedObjs.forEach(o => o.color = color); render(); } }
+    function changeColor(color) { save(); selectedObjs.forEach(o => o.color = color); render(); }
+    function changeLineType(type) { currentLineType = type; ['straight','curve','ortho'].forEach(t => document.getElementById(t+'Btn').className = (type===t?'active':'')); selectedObjs.forEach(o => { if (o.type === 'line') { o.lineType = type; if(type === 'curve' && o.points.length === 2) o.points.splice(1, 0, {x:(o.points[0].x+o.points[1].x)/2, y:(o.points[0].y+o.points[1].y)/2-20}); } }); render(); }
+    function changeLineStyle(s) { currentPenStyle = s; ['solid','dashed','zigzag'].forEach(style => document.getElementById(style+'Btn').className = (s===style?'active':'')); selectedObjs.forEach(o => { if (o.type === 'line' || o.type === 'shape') o.style = s; }); render(); }
+    function changeTerminal(t) { currentTerminal = t; ['termArrowBtn','termBlockBtn','termNoneBtn'].forEach(id => document.getElementById(id).className = (id.toLowerCase().includes(t)?'active':'')); selectedObjs.forEach(o => { if (o.type === 'line') o.terminal = t; }); render(); }
     
-    function changeLineType(type) { 
-        currentLineType = type; setMode('draw');
-        ['straight','curve','ortho'].forEach(t => document.getElementById(t+'Btn').className = (type===t?'active':'')); 
-        selectedObjs.forEach(o => { if (o.type === 'line') { o.lineType = type; if(type === 'curve' && o.points.length === 2) o.points.splice(1, 0, {x:(o.points[0].x+o.points[1].x)/2, y:(o.points[0].y+o.points[1].y)/2-20}); if(type !== 'curve' && o.points.length >= 3 && type !== 'ortho') o.points = [o.points[0], o.points[o.points.length-1]]; } }); render(); 
-    }
-
-    function changeLineStyle(s) { 
-        currentPenStyle = s; setMode('draw');
-        ['solid','dashed','zigzag'].forEach(style => document.getElementById(style+'Btn').className = (s===style?'active':'')); 
-        selectedObjs.forEach(o => { if (o.type === 'line' || o.type === 'shape') o.style = s; }); render(); 
-    }
-
-    function changeTerminal(t) { currentTerminal = t; selectedObjs.forEach(o => { if (o.type === 'line') o.terminal = t; }); render(); }
-
     function applyTemplate(type) {
-        if (objects.length > 0) { if (!confirm("現在のボードをリセットしてテンプレートを配置しますか？")) return; }
+        if (objects.length > 0 && !confirm("リセットして配置しますか？")) return;
         save(); objects = []; const w = canvas.width, h = canvas.height;
         const base = isPortrait ? [{ label: 'GL', x: w/2, y: h-60 }, { label: 'xGL', x: w/2, y: 60 }] : [{ label: 'GL', x: 60, y: h/2 }, { label: 'xGL', x: w-60, y: h/2 }];
         let p = [];
         if (!isPortrait) {
-            if (type === 'default') p = [{l:'1',x:160,y:h/2+100}, {l:'2',x:160,y:h/2-100}, {l:'3',x:300,y:h/2+100}, {l:'4',x:300,y:h/2-100}, {l:'x1',x:w-160,y:h/2+100}, {l:'x2',x:w-160,y:h/2-100}, {l:'x3',x:w-300,y:h/2+100}, {l:'x4',x:w-300,y:h/2-100}];
-            else if (type === '3-1') p = [{l:'1',x:220,y:h/2}, {l:'2',x:320,y:h-50}, {l:'3',x:320,y:50}, {l:'4',x:w-220,y:h/2}, {l:'x1',x:320,y:h/2}, {l:'x2',x:w-420,y:h-150}, {l:'x3',x:w-420,y:150}, {l:'x4',x:w-180,y:h/2}];
-            else if (type === '4-0') p = [{l:'1',x:200,y:h/2+110}, {l:'2',x:200,y:h/2-110}, {l:'3',x:350,y:h/2+200}, {l:'4',x:350,y:h/2-200}, {l:'x1',x:w-500,y:h/2+80}, {l:'x2',x:w-500,y:h/2-80}, {l:'x3',x:w-250,y:h/2+130}, {l:'x4',x:w-250,y:h/2-130}];
+            const sideDist = 160;
+            if (type === 'default') p = [{l:'1',x:sideDist,y:h/2+100},{l:'2',x:sideDist,y:h/2-100},{l:'3',x:300,y:h/2+100},{l:'4',x:300,y:h/2-100},{l:'x1',x:w-sideDist,y:h/2+100},{l:'x2',x:w-sideDist,y:h/2-100},{l:'x3',x:w-300,y:h/2+100},{l:'x4',x:w-300,y:h/2-100}];
+            else if (type === '3-1') p = [{l:'1',x:220,y:h/2},{l:'2',x:320,y:h-100},{l:'3',x:320,y:100},{l:'4',x:w-220,y:h/2},{l:'x1',x:320,y:h/2},{l:'x2',x:w-420,y:h-150},{l:'x3',x:w-420,y:150},{l:'x4',x:w-180,y:h/2}];
+            else if (type === '4-0') p = [{l:'1',x:200,y:h/2+110},{l:'2',x:200,y:h/2-110},{l:'3',x:350,y:h/2+150},{l:'4',x:350,y:h/2-150},{l:'x1',x:w-400,y:h/2+80},{l:'x2',x:w-400,y:h/2-80},{l:'x3',x:w-250,y:h/2+130},{l:'x4',x:w-250,y:h/2-130}];
         } else {
-            if (type === 'default') p = [{l:'1',x:w/2+120,y:h-180}, {l:'2',x:w/2-120,y:h-180}, {l:'3',x:w/2+120,y:h-340}, {l:'4',x:w/2-120,y:h-340}, {l:'x1',x:w/2+120,y:180}, {l:'x2',x:w/2-120,y:180}, {l:'x3',x:w/2+120,y:340}, {l:'x4',x:w/2-120,y:340}];
-            else if (type === '3-1') p = [{l:'1',x:w/2,y:h-160}, {l:'2',x:w/2+170,y:h-230}, {l:'3',x:w/2-170,y:h-230}, {l:'4',x:w/2,y:200}, {l:'x1',x:w/2,y:h/2+120}, {l:'x2',x:w/2+130,y:h-380}, {l:'x3',x:w/2-130,y:h-380}, {l:'x4',x:w/2,y:150}];
-            else if (type === '4-0') p = [{l:'1',x:w/2+80,y:h-160}, {l:'2',x:w/2-80,y:h-160}, {l:'3',x:w/2+180,y:h/2+60}, {l:'4',x:w/2-180,y:h/2+60}, {l:'x1',x:w/2+80,y:h/2+160}, {l:'x2',x:w/2-80,y:h/2+160}, {l:'x3',x:w/2+140,y:h/2-80}, {l:'x4',x:w/2-140,y:h/2-80}];
+            const sideDist = 120;
+            if (type === 'default') p = [{l:'1',x:w/2+100,y:h-sideDist},{l:'2',x:w/2-100,y:h-sideDist},{l:'3',x:w/2+100,y:h-300},{l:'4',x:w/2-100,y:h-300},{l:'x1',x:w/2+100,y:sideDist},{l:'x2',x:w/2-100,y:sideDist},{l:'x3',x:w/2+100,y:300},{l:'x4',x:w/2-100,y:300}];
+            else if (type === '3-1') p = [{l:'1',x:w/2,y:h-220},{l:'2',x:w-100,y:h-320},{l:'3',x:100,y:h-320},{l:'4',x:w/2,y:220},{l:'x1',x:w/2,y:320},{l:'x2',x:w-150,y:420},{l:'x3',x:150,y:420},{l:'x4',x:w/2,y:180}];
+            else if (type === '4-0') p = [{l:'1',x:w/2+110,y:h-200},{l:'2',x:w/2-110,y:h-200},{l:'3',x:w/2+150,y:h-350},{l:'4',x:w/2-150,y:h-350},{l:'x1',x:w/2+80,y:400},{l:'x2',x:w/2-80,y:400},{l:'x3',x:w/2+130,y:250},{l:'x4',x:w/2-130,y:250}];
         }
         base.forEach(b => objects.push({ type:'player', x:b.x, y:b.y, label:b.label, hasBall:false, color:'#000000' }));
         p.forEach(x => objects.push({ type:'player', x:x.x, y:x.y, label:x.l, hasBall:false, color:'#000000' }));
         render();
     }
 
-    function addPlayer(team) { save(); const labels = objects.filter(obj => obj.type === 'player').map(obj => obj.label); let n = 1; if (team === 'home') { while (labels.includes(n.toString())) n++; } else { while (labels.includes('x' + n)) n++; } const label = team === 'home' ? n.toString() : 'x' + n; objects.push({ type:'player', x: canvas.width/2, y: canvas.height/2, label: label, hasBall: false, color: '#000000' }); render(); }
+    function addPlayer(team) { save(); const labels = objects.filter(obj => obj.type === 'player').map(obj => obj.label); let n = 1; if (team === 'home') { while (labels.includes(n.toString())) { n++; } } else { while (labels.includes('x' + n)) { n++; } } const label = team === 'home' ? n.toString() : 'x' + n; objects.push({ type:'player', x: canvas.width/2, y: canvas.height/2, label: label, hasBall: false, color: '#000000' }); render(); }
     function addSpecial(label) { save(); objects.push({ type:'player', x: canvas.width/2, y: canvas.height/2, label: label, hasBall: false, color: '#000000' }); render(); }
     function toggleBall() { save(); selectedObjs.forEach(o => { if (o.type === 'player') o.hasBall = !o.hasBall; }); render(); }
     function deleteSelected() { if(selectedObjs.length > 0) { save(); objects = objects.filter(o => !selectedObjs.includes(o)); selectedObjs = []; render(); } }
     function undo() { if (history.length > 0) { objects = JSON.parse(history.pop()); selectedObjs = []; render(); } }
     function clearAll() { if(confirm("リセットしますか？")) { save(); objects = []; selectedObjs = []; render(); } }
-
+    
     function exportImage() {
-        const fileName = prompt("保存するファイル名:", "futsal_board"); if (!fileName) return;
-        const offCanvas = document.createElement('canvas'); offCanvas.width = canvas.width; offCanvas.height = canvas.height;
-        const octx = offCanvas.getContext('2d'); octx.fillStyle = "#ffffff"; octx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+        const fileName = prompt("保存するファイル名:", "futsal_board");
+        if (!fileName) return;
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = canvas.width; offCanvas.height = canvas.height;
+        const octx = offCanvas.getContext('2d');
+        octx.fillStyle = "#ffffff";
+        octx.fillRect(0, 0, offCanvas.width, offCanvas.height);
         render(octx, true);
-        const link = document.createElement('a'); link.download = fileName + '.png'; link.href = offCanvas.toDataURL('image/png'); link.click();
+        const link = document.createElement('a');
+        link.download = fileName + '.png';
+        link.href = offCanvas.toDataURL('image/png');
+        link.click();
     }
 
     function toggleOrientation() {
@@ -536,7 +451,7 @@
         });
         document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横"; render();
     }
-    
+
     window.onload = () => { updateSaveList(); render(); };
 </script>
 </body>
