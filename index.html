@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Futsal Board - Template Confirm Edition</title>
+    <title>Futsal Board - Data Storage Edition</title>
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #2c3e50; margin: 0; padding: 10px; }
         .controls { background: white; padding: 12px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 1300px; }
@@ -15,6 +15,10 @@
         .group { border-right: 1px solid #eee; padding: 0 10px; display: flex; flex-direction: column; justify-content: flex-start; }
         .btn-delete { color: #e74c3c; border-color: #e74c3c; }
         .btn-save { background: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; }
+        /* データ管理用スタイル */
+        .btn-data { background: #3498db !important; color: white !important; border-color: #2980b9 !important; }
+        #saveList { padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; max-width: 120px; }
+
         .color-picker { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; align-items: center; }
         .color-row { display: flex; gap: 4px; }
         .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ddd; cursor: pointer; }
@@ -40,6 +44,20 @@
 </div>
 
 <div class="controls">
+    <div class="group">
+        <span class="label">データ保存・復元</span>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; gap: 4px;">
+                <button class="btn-data" onclick="saveToStorage()">保存</button>
+                <select id="saveList"><option value="">選択してください</option></select>
+            </div>
+            <div style="display: flex; gap: 4px;">
+                <button onclick="loadFromStorage()">読込</button>
+                <button class="btn-delete" onclick="deleteFromStorage()">削除</button>
+            </div>
+        </div>
+    </div>
+
     <div class="group">
         <span class="label">テンプレート配置</span>
         <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -146,6 +164,73 @@
     let currentPenStyle = 'solid', currentLineType = 'straight', currentShapeType = 'circle';
     let currentTerminal = 'arrow', currentOpacity = 0.5, isFill = false, isStroke = true;
     let isPortrait = false, showZones = false, laneMode = 0, tempShape = null;
+
+    // --- データ保存・読込機能 ---
+    const STORAGE_KEY = "FUTSAL_BOARD_SAVES";
+
+    function updateSaveList() {
+        const list = document.getElementById('saveList');
+        list.innerHTML = '<option value="">選択してください</option>';
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        Object.keys(data).forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name;
+            list.appendChild(opt);
+        });
+    }
+
+    function saveToStorage() {
+        const name = prompt("保存する名前を入力してください:", "データ" + (document.getElementById('saveList').options.length));
+        if (!name) return;
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        // ボードの状態をオブジェクトにまとめる
+        data[name] = {
+            objects: objects,
+            isPortrait: isPortrait,
+            showZones: showZones,
+            laneMode: laneMode,
+            canvasW: canvas.width,
+            canvasH: canvas.height
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        alert("保存しました: " + name);
+        updateSaveList();
+    }
+
+    function loadFromStorage() {
+        const name = document.getElementById('saveList').value;
+        if (!name) return alert("読み込むデータを選択してください");
+        const allData = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        const data = allData[name];
+        if (!data) return;
+
+        if (objects.length > 0 && !confirm("現在のボードを破棄して「" + name + "」を読み込みますか？")) return;
+        
+        save(); // Undo履歴に追加
+        objects = data.objects;
+        isPortrait = data.isPortrait;
+        showZones = data.showZones;
+        laneMode = data.laneMode;
+        canvas.width = data.canvasW || 800;
+        canvas.height = data.canvasH || 500;
+        
+        // UI状態の更新
+        document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横";
+        document.getElementById('toggleZonesBtn').className = showZones ? "active" : "";
+        setLanes(laneMode);
+        render();
+    }
+
+    function deleteFromStorage() {
+        const name = document.getElementById('saveList').value;
+        if (!name) return;
+        if (!confirm("「" + name + "」を削除しますか？")) return;
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        delete data[name];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        updateSaveList();
+    }
+    // -------------------------
 
     function save() { history.push(JSON.stringify(objects)); if (history.length > 50) history.shift(); }
 
@@ -356,7 +441,6 @@
     function changeTerminal(t) { currentTerminal = t; selectedObjs.forEach(o => { if (o.type === 'line') o.terminal = t; }); render(); }
 
     function applyTemplate(type) {
-        // ポップアップで確認
         if (objects.length > 0) {
             if (!confirm("現在のボードをリセットしてテンプレートを配置しますか？\n（描いた図形や矢印は消去されます）")) {
                 return;
@@ -411,7 +495,8 @@
         document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横"; render();
     }
     
-    window.onload = () => render();
+    // 初回読み込み時にリストを更新
+    window.onload = () => { updateSaveList(); render(); };
 </script>
 </body>
 </html>
