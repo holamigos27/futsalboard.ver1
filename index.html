@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Futsal Board - Text Resize Edition</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #2c3e50; margin: 0; padding: 10px; }
+        .controls { background: white; padding: 12px; border-radius: 10px; margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); max-width: 1300px; }
+        .canvas-container { position: relative; background: #fff; border: 2px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        canvas { display: block; touch-action: none; cursor: crosshair; }
+        button { padding: 6px 10px; font-weight: bold; border-radius: 5px; border: 1px solid #ccc; cursor: pointer; background: white; font-size: 13px; color: #333; }
+        button:hover { background: #f8f9fa; }
+        .active { background: #000 !important; color: #fff !important; }
+        .label { font-size: 11px; color: #666; display: block; text-align: center; margin-bottom: 4px; }
+        .group { border-right: 1px solid #eee; padding: 0 10px; display: flex; flex-direction: column; justify-content: flex-start; }
+        .btn-delete { color: #e74c3c; border-color: #e74c3c; }
+        .color-picker { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; align-items: center; }
+        .color-row { display: flex; gap: 4px; }
+        .color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ddd; cursor: pointer; }
+        #shape-selector { display: flex; gap: 4px; margin-top: 4px; align-items: center;}
+        input[type="range"] { width: 60px; vertical-align: middle; }
+
+        /* 追加：左側テキスト編集パネルのスタイル */
+        #text-editor-panel {
+            position: fixed;
+            left: 10px;
+            top: 100px;
+            width: 120px;
+            background: white;
+            padding: 15px 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none; /* 初期非表示 */
+            flex-direction: column;
+            gap: 15px;
+            z-index: 100;
+            border-left: 5px solid #3498db;
+        }
+        .panel-item { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: bold; }
+        .panel-item input[type="number"] { width: 100%; padding: 3px; box-sizing: border-box; }
+        .panel-item input[type="color"] { width: 100%; height: 30px; border: none; cursor: pointer; }
+        .panel-title { color: #3498db; font-size: 13px; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 5px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div id="text-editor-panel">
+    <div class="panel-title">TEXT設定</div>
+    <div class="panel-item">
+        文字色
+        <input type="color" id="editorTextColor" oninput="updateTextFromPanel()">
+    </div>
+    <div class="panel-item">
+        <label><input type="checkbox" id="editorBgEnable" onchange="updateTextFromPanel()"> 背景色</label>
+        <input type="color" id="editorBgColor" value="#ffffff" oninput="updateTextFromPanel()">
+    </div>
+    <div class="panel-item">
+        サイズ
+        <input type="number" id="editorFontSize" min="8" max="200" oninput="updateTextFromPanel()">
+    </div>
+</div>
+
+<div class="controls">
+    <div class="group">
+        <span class="label">テンプレート配置</span>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <button onclick="applyTemplate('default')">一括配置</button>
+            <div style="display: flex; gap: 4px;">
+                <button onclick="applyTemplate('3-1')">3-1</button>
+                <button onclick="applyTemplate('4-0')">4-0</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="group">
+        <span class="label">選手・GL追加</span>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; gap: 4px;">
+                <button onclick="addPlayer('home')">味方+</button>
+                <button onclick="addSpecial('GL')">GL+</button>
+                <button onclick="toggleBall()">⚽</button>
+            </div>
+            <div style="display: flex; gap: 4px;">
+                <button onclick="addPlayer('away')">敵+</button>
+                <button onclick="addSpecial('xGL')">xGL+</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="group">
+        <span class="label">色</span>
+        <div class="color-picker">
+            <div class="color-row">
+                <div class="color-dot" style="background:#000000" onclick="changeColor('#000000')"></div>
+                <div class="color-dot" style="background:#3498db" onclick="changeColor('#3498db')"></div>
+            </div>
+            <div class="color-row">
+                <div class="color-dot" style="background:#e74c3c" onclick="changeColor('#e74c3c')"></div>
+                <div class="color-dot" style="background:#2ecc71" onclick="changeColor('#2ecc71')"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="group">
+        <span class="label">モード・図形・テキスト</span>
+        <div style="display: flex; gap: 4px;">
+            <button id="moveBtn" onclick="setMode('move')">選択</button>
+            <button id="drawBtn" class="active" onclick="setMode('draw')">ペン</button>
+            <button id="shapeBtn" onclick="setMode('shape')">図形</button>
+            <button id="textBtn" onclick="setMode('text')">Ｔ</button>
+        </div>
+        <div id="shape-selector">
+            <button id="circBtn" class="active" onclick="setShapeType('circle')">○</button>
+            <button id="rectBtn" onclick="setShapeType('rect')">□</button>
+            <button id="triBtn" onclick="setShapeType('tri')">△</button>
+            <button id="fillBtn" onclick="toggleFill()">塗</button>
+            <button id="strokeBtn" class="active" onclick="toggleStroke()">枠</button>
+            <input type="range" id="opacityRange" min="0.1" max="1.0" step="0.1" value="0.5" oninput="changeOpacity(this.value)">
+        </div>
+    </div>
+
+    <div class="group">
+        <span class="label">線の形状</span>
+        <div style="margin-bottom:4px; display: flex; gap: 4px;">
+            <button id="solidBtn" class="active" onclick="changeLineStyle('solid')">実線</button>
+            <button id="dashedBtn" onclick="changeLineStyle('dashed')">点線</button>
+            <button id="zigzagBtn" onclick="changeLineStyle('zigzag')">波線</button>
+        </div>
+        <div style="display: flex; gap: 4px;">
+            <button id="straightBtn" class="active" onclick="changeLineType('straight')">／ 直線</button>
+            <button id="curveBtn" onclick="changeLineType('curve')">～ 曲線</button>
+            <button id="orthoBtn" onclick="changeLineType('ortho')">└┐ 直角</button>
+        </div>
+    </div>
+
+    <div class="group">
+        <span class="label">終点</span>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; gap: 4px;">
+                <button onclick="changeTerminal('arrow')">矢印</button>
+                <button onclick="changeTerminal('block')">停止</button>
+            </div>
+            <button onclick="changeTerminal('none')">なし</button>
+        </div>
+    </div>
+
+    <div class="group" style="border:none;">
+        <span class="label">補助線・表示・操作</span>
+        <div style="display: flex; gap: 4px;">
+            <button id="toggleZonesBtn" onclick="toggleZones()">ゾーン</button>
+            <button id="lane3Btn" onclick="setLanes(3)">3L</button>
+            <button id="lane4Btn" onclick="setLanes(4)">4L</button>
+            <button id="laneOffBtn" class="active" onclick="setLanes(0)">OFF</button>
+            <button id="toggleOrientationBtn" onclick="toggleOrientation()">向き：横</button>
+            <button class="btn-delete" onclick="deleteSelected()">消去</button>
+            <button onclick="undo()">↩</button>
+            <button onclick="clearAll()">Reset</button>
+        </div>
+    </div>
+</div>
+
+<div class="canvas-container">
+    <canvas id="canvas" width="800" height="500"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let objects = [], history = [], mode = 'draw', isMouseDown = false;
+    let selectedObjs = [], currentLine = null, lastPos = { x: 0, y: 0 }, activePoint = null;
+    let selectionBox = null, isDragging = false;
+    let currentPenStyle = 'solid', currentLineType = 'straight', currentShapeType = 'circle';
+    let currentOpacity = 0.5, isFill = false, isStroke = true;
+    let isPortrait = false;
+    let showZones = false; 
+    let laneMode = 0; 
+    let tempShape = null;
+
+    function save() { history.push(JSON.stringify(objects)); if (history.length > 50) history.shift(); }
+
+    function drawCourt() {
+        const w = canvas.width, h = canvas.height;
+        const margin = 20, pitchW = w - margin * 2, pitchH = h - margin * 2;
+        const goalW = 60, radius = 100;
+        ctx.save();
+        ctx.strokeStyle = "#bdc3c7"; ctx.lineWidth = 1; ctx.setLineDash([]);
+        if (showZones) {
+            if (!isPortrait) {
+                const third = pitchW / 3;
+                ctx.beginPath();
+                ctx.moveTo(margin + third, margin); ctx.lineTo(margin + third, h - margin);
+                ctx.moveTo(margin + third * 2, margin); ctx.lineTo(margin + third * 2, h - margin);
+                ctx.stroke();
+            } else {
+                const third = pitchH / 3;
+                ctx.beginPath();
+                ctx.moveTo(margin, margin + third); ctx.lineTo(w - margin, margin + third);
+                ctx.moveTo(margin, margin + third * 2); ctx.lineTo(w - margin, margin + third * 2);
+                ctx.stroke();
+            }
+        }
+        if (laneMode > 0) {
+            const count = laneMode;
+            const unit = !isPortrait ? pitchH / count : pitchW / count;
+            for(let i=1; i<count; i++) {
+                ctx.beginPath();
+                if(!isPortrait) { ctx.moveTo(margin, margin + unit * i); ctx.lineTo(w - margin, margin + unit * i); }
+                else { ctx.moveTo(margin + unit * i, margin); ctx.lineTo(margin + unit * i, h - margin); }
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+        ctx.strokeStyle = "#333"; ctx.fillStyle = "#333"; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+        ctx.strokeRect(margin, margin, pitchW, pitchH);
+        const zoneGap = 60, zoneWidth = 100, lineLen = 8;
+        if (!isPortrait) {
+            ctx.beginPath(); ctx.moveTo(w/2, margin); ctx.lineTo(w/2, h-margin); ctx.stroke();
+            ctx.beginPath(); ctx.arc(w/2, h/2, 60, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(w/2, h/2, 2.5, 0, Math.PI*2); ctx.fill();
+            const drawD = (side) => {
+                const centerX = side === 'left' ? margin : w - margin, dir = side === 'left' ? 1 : -1;
+                ctx.beginPath();
+                if (side === 'left') { ctx.arc(centerX, h/2 - goalW/2, radius, Math.PI*1.5, 0, false); ctx.lineTo(centerX + radius, h/2 + goalW/2); ctx.arc(centerX, h/2 + goalW/2, radius, 0, Math.PI*0.5, false); }
+                else { ctx.arc(centerX, h/2 - goalW/2, radius, Math.PI*1.5, Math.PI, true); ctx.lineTo(centerX - radius, h/2 + goalW/2); ctx.arc(centerX, h/2 + goalW/2, radius, Math.PI, Math.PI*0.5, true); }
+                ctx.stroke();
+                ctx.lineWidth = 2; ctx.beginPath();
+                ctx.moveTo(centerX, h/2 - goalW/2); ctx.lineTo(centerX - dir*15, h/2 - goalW/2); ctx.lineTo(centerX - dir*15, h/2 + goalW/2); ctx.lineTo(centerX, h/2 + goalW/2);
+                ctx.stroke(); ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(centerX + dir*100, h/2, 2.5, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(centerX + dir*200, h/2, 2.5, 0, Math.PI*2); ctx.fill();
+            };
+            drawD('left'); drawD('right');
+            ctx.lineWidth = 2; ctx.beginPath();
+            [w/2 - zoneGap, w/2 - zoneGap - zoneWidth, w/2 + zoneGap, w/2 + zoneGap + zoneWidth].forEach(x => { ctx.moveTo(x, h - margin - lineLen); ctx.lineTo(x, h - margin + lineLen); });
+            ctx.stroke();
+        } else {
+            ctx.beginPath(); ctx.moveTo(margin, h/2); ctx.lineTo(w-margin, h/2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(w/2, h/2, 60, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(w/2, h/2, 2.5, 0, Math.PI*2); ctx.fill();
+            const drawDVertical = (side) => {
+                const centerY = side === 'top' ? margin : h - margin, dir = side === 'top' ? 1 : -1;
+                ctx.beginPath();
+                if (side === 'top') { ctx.arc(w/2 - goalW/2, centerY, radius, Math.PI, 0.5 * Math.PI, true); ctx.lineTo(w/2 + goalW/2, centerY + radius); ctx.arc(w/2 + goalW/2, centerY, radius, 0.5 * Math.PI, 0, true); }
+                else { ctx.arc(w/2 - goalW/2, centerY, radius, Math.PI, 1.5 * Math.PI, false); ctx.lineTo(w/2 + goalW/2, centerY - radius); ctx.arc(w/2 + goalW/2, centerY, radius, 1.5 * Math.PI, 0, false); }
+                ctx.stroke();
+                ctx.lineWidth = 2; ctx.beginPath();
+                ctx.moveTo(w/2 - goalW/2, centerY); ctx.lineTo(w/2 - goalW/2, centerY - dir*15); ctx.lineTo(w/2 + goalW/2, centerY - dir*15); ctx.lineTo(w/2 + goalW/2, centerY);
+                ctx.stroke(); ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(w/2, centerY + dir*100, 2.5, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(w/2, centerY + dir*200, 2.5, 0, Math.PI*2); ctx.fill();
+            };
+            drawDVertical('top'); drawDVertical('bottom');
+            ctx.lineWidth = 2; ctx.beginPath();
+            [h/2 - zoneGap, h/2 - zoneGap - zoneWidth, h/2 + zoneGap, h/2 + zoneGap + zoneWidth].forEach(y => { ctx.moveTo(w - margin - lineLen, y); ctx.lineTo(w - margin + lineLen, y); });
+            ctx.stroke();
+        }
+        const arcR = 15;
+        ctx.beginPath(); ctx.arc(margin, margin, arcR, 0, Math.PI*0.5); ctx.stroke();
+        ctx.beginPath(); ctx.arc(w-margin, margin, arcR, Math.PI*0.5, Math.PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(margin, h-margin, arcR, Math.PI*1.5, 0); ctx.stroke();
+        ctx.beginPath(); ctx.arc(w-margin, h-margin, arcR, Math.PI, Math.PI*1.5); ctx.stroke();
+    }
+
+    function toggleZones() { showZones = !showZones; document.getElementById('toggleZonesBtn').className = showZones ? "active" : ""; render(); }
+    function setLanes(m) { laneMode = m; document.getElementById('lane3Btn').className = (m === 3 ? "active" : ""); document.getElementById('lane4Btn').className = (m === 4 ? "active" : ""); document.getElementById('laneOffBtn').className = (m === 0 ? "active" : ""); render(); }
+
+    function toggleOrientation() {
+        save(); const oldW = canvas.width, oldH = canvas.height; isPortrait = !isPortrait; canvas.width = oldH; canvas.height = oldW;
+        objects.forEach(obj => {
+            const rotateCoords = (x, y) => { return isPortrait ? { nx: y, ny: oldW - x } : { nx: oldH - y, ny: x }; };
+            if (obj.type === 'player' || obj.type === 'text') { const res = rotateCoords(obj.x, obj.y); obj.x = res.nx; obj.y = res.ny; }
+            else if (obj.points) { obj.points.forEach(p => { const res = rotateCoords(p.x, p.y); p.x = res.nx; p.y = res.ny; }); }
+        });
+        document.getElementById('toggleOrientationBtn').innerText = isPortrait ? "向き：縦" : "向き：横"; render();
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); drawCourt();
+        objects.forEach(obj => {
+            if (obj.type === 'line') drawStyledLine(obj, selectedObjs.includes(obj));
+            else if (obj.type === 'shape') drawShape(obj, selectedObjs.includes(obj));
+            else if (obj.type === 'text') drawTextObj(obj, selectedObjs.includes(obj));
+            else drawPlayerObj(obj, selectedObjs.includes(obj));
+        });
+        if (tempShape) drawShape(tempShape, false);
+        if (selectionBox) { ctx.strokeStyle = "rgba(0,123,255,0.8)"; ctx.setLineDash([5,5]); ctx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h); ctx.fillStyle = "rgba(0,123,255,0.1)"; ctx.fillRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h); ctx.setLineDash([]); }
+        
+        // 追加：パネルの表示管理
+        managePanelUI();
+    }
+
+    // --- 更新版：テキスト描画（背景・リサイズ対応） ---
+    function drawTextObj(obj, isSelected) {
+        ctx.save();
+        const fs = obj.fontSize || 24;
+        ctx.font = fs + "px sans-serif";
+        ctx.textBaseline = "top";
+        
+        const metrics = ctx.measureText(obj.text);
+        const w = metrics.width;
+        const h = fs; 
+        obj._lastW = w; obj._lastH = h; 
+
+        // 背景描画（追加機能）
+        if (obj.bgColor) {
+            ctx.fillStyle = obj.bgColor;
+            const padding = 4;
+            ctx.fillRect(obj.x - padding, obj.y - padding, w + padding * 2, h + padding * 2);
+        }
+
+        ctx.fillStyle = obj.color || "#000";
+        ctx.fillText(obj.text, obj.x, obj.y);
+
+        if (isSelected) {
+            ctx.strokeStyle = "#007bff"; ctx.setLineDash([4,4]); ctx.lineWidth = 1;
+            ctx.strokeRect(obj.x - 5, obj.y - 5, w + 10, h + 10);
+            
+            ctx.setLineDash([]); ctx.fillStyle = "white"; ctx.strokeStyle = "#007bff";
+            const handles = [
+                {x: obj.x - 5, y: obj.y - 5}, {x: obj.x + w + 5, y: obj.y - 5},
+                {x: obj.x - 5, y: obj.y + h + 5}, {x: obj.x + w + 5, y: obj.y + h + 5}
+            ];
+            handles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
+        }
+        ctx.restore();
+    }
+
+    function drawPlayerObj(obj, isSelected) {
+        ctx.save(); ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        const radius = Math.max(22, (ctx.measureText(obj.label).width / 2) + 8);
+        if (obj.hasBall) { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(obj.x, obj.y, radius, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = obj.color || "#000"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(obj.x, obj.y, radius, 0, Math.PI * 2); ctx.stroke(); }
+        ctx.fillStyle = obj.color || "#000"; ctx.fillText(obj.label, obj.x, obj.y);
+        if (isSelected) { ctx.strokeStyle = "#007bff"; ctx.setLineDash([4,4]); ctx.lineWidth = 1; ctx.strokeRect(obj.x-radius-5, obj.y-radius-5, (radius+5)*2, (radius+5)*2); }
+        ctx.restore();
+    }
+
+    function drawShape(obj, isSelected) {
+        ctx.save();
+        const pts = obj.points;
+        const color = obj.color || "#000";
+        ctx.beginPath();
+        if (obj.shape === 'rect') { ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(pts[1].x, pts[1].y); ctx.lineTo(pts[2].x, pts[2].y); ctx.lineTo(pts[3].x, pts[3].y); ctx.closePath(); }
+        else if (obj.shape === 'circle') { const r = Math.sqrt(Math.pow(pts[1].x - pts[0].x, 2) + Math.pow(pts[1].y - pts[0].y, 2)); ctx.arc(pts[0].x, pts[0].y, r, 0, Math.PI * 2); }
+        else if (obj.shape === 'tri') { ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(pts[1].x, pts[1].y); ctx.lineTo(pts[2].x, pts[2].y); ctx.closePath(); }
+        if (obj.isFill) { ctx.globalAlpha = obj.opacity || 0.5; ctx.fillStyle = color; ctx.fill(); }
+        if (obj.isStroke) { ctx.globalAlpha = 1.0; ctx.strokeStyle = isSelected ? "#007bff" : color; ctx.lineWidth = isSelected ? 4 : 2.5; if (obj.style === 'dashed') ctx.setLineDash([8, 8]); ctx.stroke(); } else if (isSelected) { ctx.globalAlpha = 0.5; ctx.strokeStyle = "#007bff"; ctx.setLineDash([4, 4]); ctx.stroke(); }
+        if (isSelected) { ctx.globalAlpha = 1.0; ctx.setLineDash([]); ctx.fillStyle = "white"; ctx.strokeStyle = "#007bff"; ctx.lineWidth = 1; pts.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill(); ctx.stroke(); }); }
+        ctx.restore();
+    }
+
+    function drawStyledLine(obj, isSelected) {
+        ctx.save(); ctx.strokeStyle = isSelected ? "#007bff" : (obj.color || "#000"); ctx.lineWidth = isSelected ? 4 : 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+        const pts = obj.points; let pathPts = [];
+        if (obj.lineType === 'ortho') { pathPts.push(pts[0]); for (let i = 1; i < pts.length; i++) { let flip = obj.flipOrtho; if (i % 2 === 0) flip = !flip; if (flip) pathPts.push({ x: pts[i-1].x, y: pts[i].y }); else pathPts.push({ x: pts[i].x, y: pts[i-1].y }); pathPts.push(pts[i]); } }
+        else if (obj.lineType === 'curve' && pts.length === 3) { for (let i = 0; i <= 40; i++) { const t = i / 40; pathPts.push({ x: (1-t)**2 * pts[0].x + 2*(1-t)*t * pts[1].x + t**2 * pts[2].x, y: (1-t)**2 * pts[0].y + 2*(1-t)*t * pts[1].y + t**2 * pts[2].y }); } }
+        else pathPts = pts;
+        if (obj.style === 'dashed') ctx.setLineDash([8, 8]);
+        ctx.beginPath(); ctx.moveTo(pathPts[0].x, pathPts[0].y);
+        if (obj.style === 'zigzag' && obj.lineType !== 'ortho') { let totalDist = 0; for (let i = 1; i < pathPts.length; i++) { const prev = pathPts[i-1], p = pathPts[i], dx = p.x-prev.x, dy = p.y-prev.y, dist = Math.sqrt(dx*dx+dy*dy), angle = Math.atan2(dy, dx), segments = Math.floor(dist / 2); for(let j=1; j<=segments; j++){ const step = j/segments, currX = prev.x + dx*step, currY = prev.y + dy*step, offset = Math.sin((totalDist + dist*step) * 0.3) * 3.5; ctx.lineTo(currX + Math.cos(angle+Math.PI/2)*offset, currY + Math.sin(angle+Math.PI/2)*offset); } totalDist += dist; } }
+        else pathPts.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.stroke();
+        if (pathPts.length > 1 && obj.terminal !== 'none') { ctx.setLineDash([]); const last = pathPts[pathPts.length-1], prev = pathPts[pathPts.length-2], angle = Math.atan2(last.y - prev.y, last.x - prev.x); ctx.fillStyle = ctx.strokeStyle; if (obj.terminal === 'arrow') { ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(last.x-14*Math.cos(angle-0.45), last.y-14*Math.sin(angle-0.45)); ctx.lineTo(last.x-14*Math.cos(angle+0.45), last.y-14*Math.sin(angle+0.45)); ctx.fill(); } else if (obj.terminal === 'block') { const bx = Math.sin(angle)*10, by = Math.cos(angle)*10; ctx.beginPath(); ctx.moveTo(last.x+bx, last.y-by); ctx.lineTo(last.x-bx, last.y+by); ctx.lineWidth=4; ctx.stroke(); } }
+        if (isSelected) { ctx.fillStyle = "white"; ctx.strokeStyle = "#007bff"; ctx.setLineDash([]); pts.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill(); ctx.stroke(); }); }
+        ctx.restore();
+    }
+
+    function isPointNearLine(px, py, obj) {
+        const pts = obj.points, threshold = 10;
+        if(obj.lineType === 'ortho') { for(let i=1; i<pts.length; i++) { let flip = obj.flipOrtho; if(i%2===0) flip = !flip; let corner = flip ? {x:pts[i-1].x, y:pts[i].y} : {x:pts[i].x, y:pts[i-1].y}; if(distToSegment(px,py,pts[i-1],corner) < threshold || distToSegment(px,py,corner,pts[i]) < threshold) return true; } return false; }
+        return distToSegment(px,py,pts[0],pts[pts.length-1]) < threshold;
+    }
+    
+    function distToSegment(px,py,p1,p2) { const dx = p2.x-p1.x, dy = p2.y-p1.y, l2 = dx*dx+dy*dy; if(l2 === 0) return Math.sqrt((px-p1.x)**2+(py-p1.y)**2); let t = Math.max(0, Math.min(1, ((px-p1.x)*dx+(py-p1.y)*dy)/l2)); return Math.sqrt((px-(p1.x+t*dx))**2+(py-(p1.y+t*dy))**2); }
+
+    canvas.onmousedown = (e) => {
+        const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        isMouseDown = true; lastPos = { x: mx, y: my }; activePoint = null; isDragging = false; selectionBox = null;
+
+        if (mode === 'text') {
+            const txt = prompt("表示するテキストを入力してください:");
+            if (txt) { save(); objects.push({ type: 'text', x: mx, y: my, text: txt, color: '#000000', fontSize: 24, bgColor: null }); }
+            isMouseDown = false; render(); return;
+        }
+
+        for (let obj of selectedObjs) {
+            if (obj.type === 'text') {
+                const w = obj._lastW, h = obj._lastH;
+                const handles = [
+                    {x: obj.x-5, y: obj.y-5, id: 'lt'}, {x: obj.x+w+5, y: obj.y-5, id: 'rt'},
+                    {x: obj.x-5, y: obj.y+h+5, id: 'lb'}, {x: obj.x+w+5, y: obj.y+h+5, id: 'rb'}
+                ];
+                for(let hdl of handles) {
+                    if (Math.sqrt((mx-hdl.x)**2 + (my-hdl.y)**2) < 10) { activePoint = { parent: obj, handle: hdl.id }; return; }
+                }
+            }
+            if (obj.points) {
+                for(let p of obj.points) { if (Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 15) { activePoint = p; return; } }
+            }
+        }
+
+        let found = objects.slice().reverse().find(o => {
+            if (o.type === 'player') return Math.sqrt((mx-o.x)**2 + (my-o.y)**2) < 25;
+            if (o.type === 'text') {
+                const fs = o.fontSize || 24; ctx.font = fs + "px sans-serif";
+                const w = ctx.measureText(o.text).width;
+                return mx >= o.x - 5 && mx <= o.x + w + 5 && my >= o.y - 5 && my <= o.y + fs + 5;
+            }
+            if (o.type === 'shape') {
+                if (o.points.some(p => Math.sqrt((mx-p.x)**2 + (my-p.y)**2) < 15)) return true;
+                if (o.isFill) { if (mx > Math.min(...o.points.map(p=>p.x)) && mx < Math.max(...o.points.map(p=>p.x)) && my > Math.min(...o.points.map(p=>p.y)) && my < Math.max(...o.points.map(p=>p.y))) return true; }
+                for(let i=0; i<o.points.length; i++){
+                    let p1 = o.points[i], p2 = o.points[(i+1)%o.points.length];
+                    if (o.shape === 'circle') { const r = Math.sqrt(Math.pow(o.points[1].x-o.points[0].x,2) + Math.pow(o.points[1].y-o.points[0].y,2)); const d = Math.sqrt((mx-o.points[0].x)**2 + (my-o.points[0].y)**2); if (Math.abs(d-r) < 10) return true; } else if (distToSegment(mx, my, p1, p2) < 10) return true;
+                }
+                return false;
+            }
+            return isPointNearLine(mx, my, o);
+        });
+
+        if (found) { isDragging = true; if (!selectedObjs.includes(found)) selectedObjs = [found]; } 
+        else {
+            if (mode === 'move') { selectedObjs = []; selectionBox = { startX: mx, startY: my, x: mx, y: my, w: 0, h: 0 }; } 
+            else if (mode === 'shape') { tempShape = { type: 'shape', shape: currentShapeType, points: [{x:mx, y:my}, {x:mx, y:my}, {x:mx, y:my}, {x:mx, y:my}], color: '#3498db', style: currentPenStyle, isFill: isFill, isStroke: isStroke, opacity: currentOpacity, startX: mx, startY: my }; } else {
+                save(); let pts = [{x: mx, y: my}, {x: mx, y: my}]; if(currentLineType === 'curve') pts.splice(1, 0, {x: mx, y: my});
+                currentLine = { type: 'line', points: pts, style: currentPenStyle, terminal: 'arrow', lineType: currentLineType, color: '#000000', flipOrtho: false };
+                objects.push(currentLine); selectedObjs = [currentLine]; activePoint = currentLine.points[currentLine.points.length-1];
+            }
+        }
+        render();
+    };
+
+    window.onmousemove = (e) => {
+        if (!isMouseDown) return; const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        if (activePoint && activePoint.handle) {
+            const obj = activePoint.parent; const dx = mx - lastPos.x; const ratio = (obj._lastW / obj.fontSize); const sizeChange = (activePoint.handle.includes('r') ? dx : -dx) / (ratio * 0.5); const newSize = Math.max(8, (obj.fontSize || 24) + sizeChange);
+            if (activePoint.handle.includes('l')) { const oldW = obj._lastW; obj.fontSize = newSize; ctx.font = newSize + "px sans-serif"; obj.x -= (ctx.measureText(obj.text).width - oldW); } else { obj.fontSize = newSize; }
+            lastPos = { x: mx, y: my };
+        } else if (selectionBox) { 
+            selectionBox.x = Math.min(mx, selectionBox.startX); selectionBox.y = Math.min(my, selectionBox.startY); selectionBox.w = Math.abs(mx - selectionBox.startX); selectionBox.h = Math.abs(my - selectionBox.startY); selectedObjs = objects.filter(o => { const bx = (o.type === 'player' || o.type === 'text') ? o.x : o.points[0].x, by = (o.type === 'player' || o.type === 'text') ? o.y : o.points[0].y; return bx >= selectionBox.x && bx <= selectionBox.x + selectionBox.w && by >= selectionBox.y && by <= selectionBox.y + selectionBox.h; }); 
+        } else if (activePoint) { activePoint.x = mx; activePoint.y = my; } else if (tempShape) { const x1 = tempShape.startX, y1 = tempShape.startY, x2 = mx, y2 = my; if (tempShape.shape === 'rect') tempShape.points = [{x:x1, y:y1}, {x:x2, y:y1}, {x:x2, y:y2}, {x:x1, y:y2}]; else if (tempShape.shape === 'tri') tempShape.points = [{x:(x1+x2)/2, y:y1}, {x:x2, y:y2}, {x:x1, y:y2}]; else if (tempShape.shape === 'circle') tempShape.points = [{x:x1, y:y1}, {x:x2, y:y2}]; } else if (isDragging || (selectedObjs.length > 0 && isMouseDown)) { const dx = mx - lastPos.x, dy = my - lastPos.y; selectedObjs.forEach(o => { if (o.type === 'player' || o.type === 'text') { o.x += dx; o.y += dy; } else if (o.points) o.points.forEach(p => { p.x += dx; p.y += dy; }); }); lastPos = { x: mx, y: my }; }
+        render();
+    };
+
+    window.ondblclick = (e) => {
+        const rect = canvas.getBoundingClientRect(); const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const found = objects.find(o => o.type === 'text' && mx >= o.x - 5 && mx <= o.x + o._lastW + 5 && my >= o.y - 5 && my <= o.y + o._lastH + 5);
+        if (found) {
+            const newTxt = prompt("テキストを編集:", found.text);
+            if (newTxt !== null) { save(); found.text = newTxt; render(); }
+        }
+    };
+
+    window.onmouseup = () => { if (tempShape) { save(); objects.push(tempShape); selectedObjs = [tempShape]; tempShape = null; } isMouseDown = false; activePoint = null; currentLine = null; selectionBox = null; isDragging = false; render(); };
+
+    // --- 追加：サイドパネル管理ロジック ---
+    function managePanelUI() {
+        const panel = document.getElementById('text-editor-panel');
+        // テキストがちょうど1つ選択されている時のみ表示
+        const selectedText = selectedObjs.length === 1 && selectedObjs[0].type === 'text' ? selectedObjs[0] : null;
+
+        if (selectedText) {
+            panel.style.display = 'flex';
+            // 操作中でない場合に現在の値をUIにセット
+            if (!isMouseDown) {
+                document.getElementById('editorTextColor').value = selectedText.color || '#000000';
+                document.getElementById('editorBgEnable').checked = !!selectedText.bgColor;
+                document.getElementById('editorBgColor').value = selectedText.bgColor || '#ffffff';
+                document.getElementById('editorFontSize').value = Math.round(selectedText.fontSize || 24);
+            }
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+
+    function updateTextFromPanel() {
+        const selectedText = selectedObjs.find(o => o.type === 'text');
+        if (!selectedText) return;
+
+        selectedText.color = document.getElementById('editorTextColor').value;
+        const bgEnable = document.getElementById('editorBgEnable').checked;
+        selectedText.bgColor = bgEnable ? document.getElementById('editorBgColor').value : null;
+        selectedText.fontSize = parseInt(document.getElementById('editorFontSize').value) || 24;
+        
+        render();
+    }
+
+    function setMode(m) { mode = m; document.getElementById('moveBtn').className = (m === 'move' ? 'active' : ''); document.getElementById('drawBtn').className = (m === 'draw' ? 'active' : ''); document.getElementById('shapeBtn').className = (m === 'shape' ? 'active' : ''); document.getElementById('textBtn').className = (m === 'text' ? 'active' : ''); }
+    function setShapeType(s) { currentShapeType = s; ['circ','rect','tri'].forEach(id => document.getElementById(id+'Btn').className = (id.startsWith(s.substring(0,3))?'active':'')); }
+    function toggleFill() { isFill = !isFill; document.getElementById('fillBtn').className = isFill ? 'active' : ''; selectedObjs.forEach(o => { if(o.type==='shape') o.isFill = isFill; }); render(); }
+    function toggleStroke() { isStroke = !isStroke; document.getElementById('strokeBtn').className = isStroke ? 'active' : ''; selectedObjs.forEach(o => { if(o.type==='shape') o.isStroke = isStroke; }); render(); }
+    function changeOpacity(v) { currentOpacity = parseFloat(v); selectedObjs.forEach(o => { if(o.type==='shape') o.opacity = currentOpacity; }); render(); }
+    function changeColor(color) { if (selectedObjs.length > 0) { save(); selectedObjs.forEach(o => o.color = color); render(); } }
+    function changeLineType(type) { currentLineType = type; ['straight','curve','ortho'].forEach(t => document.getElementById(t+'Btn').className = (type===t?'active':'')); selectedObjs.forEach(o => { if (o.type === 'line') { o.lineType = type; if(type === 'curve' && o.points.length === 2) o.points.splice(1, 0, {x:(o.points[0].x+o.points[1].x)/2, y:(o.points[0].y+o.points[1].y)/2-20}); if(type !== 'curve' && o.points.length >= 3 && type !== 'ortho') o.points = [o.points[0], o.points[o.points.length-1]]; } }); render(); }
+    function changeLineStyle(s) { currentPenStyle = s; ['solid','dashed','zigzag'].forEach(style => document.getElementById(style+'Btn').className = (s===style?'active':'')); selectedObjs.forEach(o => { if (o.type === 'line' || o.type === 'shape') o.style = s; }); render(); }
+    function changeTerminal(t) { selectedObjs.forEach(o => { if (o.type === 'line') o.terminal = t; }); render(); }
+
+    function applyTemplate(type) {
+        save(); objects = []; const w = canvas.width, h = canvas.height;
+        const base = isPortrait ? [{ label: 'GL', x: w/2, y: h-60 }, { label: 'xGL', x: w/2, y: 60 }] : [{ label: 'GL', x: 60, y: h/2 }, { label: 'xGL', x: w-60, y: h/2 }];
+        let p = [];
+        if (!isPortrait) {
+            if (type === 'default') { p = [{l:'1',x:160,y:h/2+100}, {l:'2',x:160,y:h/2-100}, {l:'3',x:300,y:h/2+100}, {l:'4',x:300,y:h/2-100}, {l:'x1',x:w-160,y:h/2+100}, {l:'x2',x:w-160,y:h/2-100}, {l:'x3',x:w-300,y:h/2+100}, {l:'x4',x:w-300,y:h/2-100}]; }
+            else if (type === '3-1') { p = [{l:'1',x:220,y:h/2}, {l:'2',x:320,y:h-50}, {l:'3',x:320,y:50}, {l:'4',x:w-220,y:h/2}, {l:'x1',x:320,y:h/2}, {l:'x2',x:w-420,y:h-150}, {l:'x3',x:w-420,y:150}, {l:'x4',x:w-180,y:h/2}]; }
+            else if (type === '4-0') { p = [{l:'1',x:200,y:h/2+110}, {l:'2',x:200,y:h/2-110}, {l:'3',x:350,y:h/2+200}, {l:'4',x:350,y:h/2-200}, {l:'x1',x:w-500,y:h/2+80}, {l:'x2',x:w-500,y:h/2-80}, {l:'x3',x:w-250,y:h/2+130}, {l:'x4',x:w-250,y:h/2-130}]; }
+        } else {
+            if (type === 'default') { p = [{l:'1',x:w/2+120,y:h-180}, {l:'2',x:w/2-120,y:h-180}, {l:'3',x:w/2+120,y:h-340}, {l:'4',x:w/2-120,y:h-340}, {l:'x1',x:w/2+120,y:180}, {l:'x2',x:w/2-120,y:180}, {l:'x3',x:w/2+120,y:340}, {l:'x4',x:w/2-120,y:340}]; }
+            else if (type === '3-1') { p = [{l:'1',x:w/2,y:h-160}, {l:'2',x:w/2+170,y:h-230}, {l:'3',x:w/2-170,y:h-230}, {l:'4',x:w/2,y:200}, {l:'x1',x:w/2,y:h/2+120}, {l:'x2',x:w/2+130,y:h-380}, {l:'x3',x:w/2-130,y:h-380}, {l:'x4',x:w/2,y:150}]; }
+            else if (type === '4-0') { const sideDist = 180; p = [{l:'1',x:w/2+80,y:h-160}, {l:'2',x:w/2-80,y:h-160}, {l:'3',x:w/2+sideDist,y:h/2+60}, {l:'4',x:w/2-sideDist,y:h/2+60}, {l:'x1',x:w/2+80,y:h/2+160}, {l:'x2',x:w/2-80,y:h/2+160}, {l:'x3',x:w/2+sideDist-40,y:h/2-80}, {l:'x4',x:w/2-sideDist+40,y:h/2-80}]; }
+        }
+        base.forEach(b => objects.push({ type:'player', x:b.x, y:b.y, label:b.label, hasBall:false, color:'#000000' }));
+        p.forEach(x => objects.push({ type:'player', x:x.x, y:x.y, label:x.l, hasBall:false, color:'#000000' }));
+        render();
+    }
+
+    function addPlayer(team) { save(); const labels = objects.filter(obj => obj.type === 'player').map(obj => obj.label); let n = 1; if (team === 'home') { while (labels.includes(n.toString())) { n++; } } else { while (labels.includes('x' + n)) { n++; } } const label = team === 'home' ? n.toString() : 'x' + n; objects.push({ type:'player', x: canvas.width/2, y: canvas.height/2, label: label, hasBall: false, color: '#000000' }); render(); }
+    function addSpecial(label) { save(); objects.push({ type:'player', x: canvas.width/2, y: canvas.height/2, label: label, hasBall: false, color: '#000000' }); render(); }
+    function toggleBall() { save(); selectedObjs.forEach(o => { if (o.type === 'player') o.hasBall = !o.hasBall; }); render(); }
+    function deleteSelected() { if(selectedObjs.length > 0) { save(); objects = objects.filter(o => !selectedObjs.includes(o)); selectedObjs = []; render(); } }
+    function undo() { if (history.length > 0) { objects = JSON.parse(history.pop()); selectedObjs = []; render(); } }
+    function clearAll() { if(confirm("リセットしますか？")) { save(); objects = []; selectedObjs = []; render(); } }
+    
+    render();
+</script>
+</body>
+</html>
